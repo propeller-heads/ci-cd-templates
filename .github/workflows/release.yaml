@@ -6,18 +6,6 @@ on:
       image_tag:
         required: false
         type: string
-      app_name:
-        required: true
-        type: string
-      cache:
-        required: false
-        type: boolean
-      namespace:
-        required: false
-        type: string
-      environment:
-        required: true
-        type: string
       runs_on:
         required: true
         type: string
@@ -25,13 +13,6 @@ on:
       enable_deploy:
         required: true
         type: boolean
-    secrets:
-      repo_token:
-        required: false
-      pat_app_id:
-        required: true
-      pat_app_private_key:
-        required: true
 
 jobs:
   release:
