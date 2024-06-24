@@ -1,0 +1,102 @@
+name: Release
+
+on:
+  workflow_call:
+    inputs:
+      image_tag:
+        required: false
+        type: string
+      app_name:
+        required: true
+        type: string
+      cache:
+        required: false
+        type: boolean
+      namespace:
+        required: false
+        type: string
+      environment:
+        required: true
+        type: string
+      runs_on:
+        required: true
+        type: string
+        default: ubuntu-latest
+      enable_deploy:
+        required: true
+        type: boolean
+    secrets:
+      repo_token:
+        required: false
+      pat_app_id:
+        required: true
+      pat_app_private_key:
+        required: true
+
+jobs:
+  release:
+    name: release
+    runs-on: '${{ inputs.runs_on }}'
+    outputs:
+      NEXT_RELEASE_VERSION: ${{ steps.semantic.outputs.NEXT_RELEASE_VERSION }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20.11.1
+
+      - name: Update NPM version (remove in future Dmitrii)
+        run: npm i -g npm@10.5.0
+
+      - name: Install dependencies
+        run: npm install --save-dev  semantic-release@23.0.2 @semantic-release/changelog@6.0.3 @semantic-release/git@10.0.1 conventional-changelog-conventionalcommits@7.0.2 conventional-changelog-eslint@5.0.0 @semantic-release/exec@6.0.3 --legacy-peer-deps
+
+      - name: Verify the integrity of provenance attestations and registry signatures for installed dependencies
+        run: npm audit signatures
+
+      - name: Semantic release
+        id: semantic
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: npx semantic-release
+
+      - name: Validate Release
+        env:
+          NEXT_RELEASE_VERSION: ${{ steps.semantic.outputs.NEXT_RELEASE_VERSION }}
+        run: |
+          if [ -z "$NEXT_RELEASE_VERSION" ]; then
+            echo "Error: Empty release, exiting..."
+            exit 1
+          else
+            echo "Release version is: $NEXT_RELEASE_VERSION"
+          fi
+
+  build-and-push:
+    runs-on: '${{ inputs.runs_on }}'
+    needs: release
+    if: needs.Release.outputs.NEXT_RELEASE_VERSION != ''
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: 'Build and push image to GAR'
+        run: |
+            echo "Build and push"
+
+  deploy:
+    runs-on: '${{ inputs.runs_on }}'
+    if: ${{ (needs.Release.outputs.NEXT_RELEASE_VERSION != '') && (inputs.enable_deploy == true) }}
+    needs: ["release", "build-and-push"]
+    steps:
+      - name: "Deployment"
+        run: | 
+          echo "Deployment"
