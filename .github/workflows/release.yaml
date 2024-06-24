@@ -3,16 +3,10 @@ name: Release
 on:
   workflow_call:
     inputs:
-      image_tag:
-        required: false
-        type: string
       runs_on:
         required: true
         type: string
         default: ubuntu-latest
-      enable_deploy:
-        required: true
-        type: boolean
 
 jobs:
   release:
@@ -75,7 +69,7 @@ jobs:
 
   deploy:
     runs-on: '${{ inputs.runs_on }}'
-    if: ${{ (needs.Release.outputs.NEXT_RELEASE_VERSION != '') && (inputs.enable_deploy == true) }}
+    if: ${{ (needs.Release.outputs.NEXT_RELEASE_VERSION != '') }}
     needs: ["release", "build-and-push"]
     steps:
       - name: "Deployment"

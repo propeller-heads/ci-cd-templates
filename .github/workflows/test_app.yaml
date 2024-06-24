@@ -1,0 +1,34 @@
+name: Test code use PyTest
+
+on: 
+  workflow_call:
+    inputs:
+      python_version:
+        required: false
+        type: string
+        default: '3.12'
+      timeout_minutes:
+        required: false
+        type: number
+        default: 30
+      runs_on:
+        required: false
+        type: string
+        default: ubuntu-latest
+
+jobs:
+  test-python-code:
+    runs-on: '${{ inputs.runs_on }}'
+    timeout-minutes: ${{ inputs.timeout_minutes }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Python environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: '${{ inputs.python_version }}'
+        id: setup_python
+
+      - name: "Python tests"
+        run: |
+          echo "Run tests"
