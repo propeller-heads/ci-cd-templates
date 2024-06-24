@@ -12,7 +12,7 @@ on:
         type: boolean
 
 jobs:
-  build-and-push:
+  verify-build:
     runs-on: '${{ inputs.runs_on }}'
     steps:
       - name: "Checkout"
