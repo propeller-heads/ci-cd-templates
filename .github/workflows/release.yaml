@@ -46,7 +46,7 @@ jobs:
       - name: Semantic release
         id: semantic
         env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
         run: npx semantic-release
 
       - name: Validate Release
