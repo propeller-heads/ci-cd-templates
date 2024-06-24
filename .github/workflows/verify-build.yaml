@@ -4,7 +4,7 @@ on:
   workflow_call:
     inputs:
       runs_on:
-        required: true
+        required: false
         type: string
         default: ubuntu-latest
       cache:
