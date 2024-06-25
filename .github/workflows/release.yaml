@@ -7,6 +7,12 @@ on:
         required: false
         type: string
         default: ubuntu-latest
+      enable_deploy:
+        required: true
+        type: boolean
+    secrets:
+      gh_token:
+        required: true
 
 jobs:
   release:
@@ -46,7 +52,7 @@ jobs:
       - name: Semantic release
         id: semantic
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.gh_token }}
         run: npx semantic-release
 
       - name: Validate Release
@@ -77,8 +83,8 @@ jobs:
 
   deploy:
     runs-on: '${{ inputs.runs_on }}'
-    if: ${{ (needs.Release.outputs.NEXT_RELEASE_VERSION != '') }}
     needs: ["release", "build-and-push"]
+    if: ${{ (needs.release.outputs.NEXT_RELEASE_VERSION != '') && (inputs.enable_deploy == true) }}
     steps:
       - name: "Deployment"
         run: | 
