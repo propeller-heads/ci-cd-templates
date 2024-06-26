@@ -10,6 +10,12 @@ on:
     secrets:
       gh_token:
         required: true
+    outputs:
+      next_release_version:
+        value: ${{ jobs.release.outputs.NEXT_RELEASE_VERSION }}
+      next_release_version2:
+        value: ${{ jobs.release.outputs.NEXT_RELEASE_VERSION2 }}
+
 
 jobs:
   release:
