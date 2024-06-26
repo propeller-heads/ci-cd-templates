@@ -1,0 +1,25 @@
+name: Promote to production
+
+on:
+  workflow_call:
+    inputs:
+      runs_on:
+        required: false
+        type: string
+        default: ubuntu-latest
+      image_tag:
+        required: true
+        type: string
+        description: Image tag for production
+
+jobs:
+  deploy:
+    runs-on: '${{ inputs.runs_on }}'
+    steps:
+      - name: "Create PR for production deployment"
+        run: | 
+          echo "Create PR for production deployment"
+          echo "$image_tag"
+        with:
+          image_tag: '${{ inputs.runs_on }}'
+
