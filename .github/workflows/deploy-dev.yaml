@@ -7,9 +7,6 @@ on:
         required: false
         type: string
         default: ubuntu-latest
-    secrets:
-      gh_token:
-        required: true
 
 jobs:
   deploy:
