@@ -19,7 +19,6 @@ jobs:
       - name: "Create PR for production deployment"
         run: | 
           echo "Create PR for production deployment"
-          echo "$image_tag"
-        with:
-          image_tag: '${{ inputs.runs_on }}'
+          echo "${{ inputs.image_tag }}"
+
 
