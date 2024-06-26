@@ -17,6 +17,7 @@ jobs:
     runs-on: '${{ inputs.runs_on }}'
     outputs:
       NEXT_RELEASE_VERSION: ${{ steps.semantic.outputs.NEXT_RELEASE_VERSION }}
+      NEXT_RELEASE_VERSION2: ${{ steps.setup_output.outputs.NEXT_RELEASE_VERSION2 }}
     steps:
       - name: Install git
         run: sudo apt update && sudo apt install -y git
@@ -51,6 +52,12 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.gh_token }}
         run: npx semantic-release
+
+      - name: Setup output
+        id: setup_output
+        run: echo "NEXT_RELEASE_VERSION2=$NEXT_RELEASE_VERSION" >> "$GITHUB_OUTPUT"
+        env:
+          NEXT_RELEASE_VERSION: ${{ steps.semantic.outputs.NEXT_RELEASE_VERSION }}
 
       - name: Validate Release
         env:
