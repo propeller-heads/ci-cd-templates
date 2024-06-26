@@ -1,4 +1,4 @@
-name: Build verify
+name: Release
 
 on:
   workflow_call:
@@ -7,17 +7,13 @@ on:
         required: false
         type: string
         default: ubuntu-latest
-      cache:
-        required: false
-        type: boolean
 
 jobs:
-  verify-build:
+  build-and-push:
     runs-on: '${{ inputs.runs_on }}'
     steps:
-      - name: "Checkout"
+      - name: Checkout
         uses: actions/checkout@v4
-
-      - name: "Verify build"
-        run: | 
-          echo "Verify build"
+      - name: 'Build and push image to GAR'
+        run: |
+            echo "Build and push"

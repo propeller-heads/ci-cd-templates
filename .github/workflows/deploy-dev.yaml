@@ -1,0 +1,20 @@
+name: Release
+
+on:
+  workflow_call:
+    inputs:
+      runs_on:
+        required: false
+        type: string
+        default: ubuntu-latest
+    secrets:
+      gh_token:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: '${{ inputs.runs_on }}'
+    steps:
+      - name: "Deployment"
+        run: | 
+          echo "Deployment"
