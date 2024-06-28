@@ -12,5 +12,5 @@ releases:
     chart:
       name: ../../charts/common-chart
     values:
-      - values/base/_common.yml.tpl
+      - base/_common.yml.tpl
       - values/{{ requiredEnv "APP_NAME" }}.yml
