@@ -54,7 +54,8 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           commit-message: "Updated image version ${{ inputs.image_tag }} for application ${{ inputs.app_name }}"
-          add-paths: "helmwave/prod/versions.yml"
+          add-paths: | 
+            helmwave/prod/versions.yml
           token: "${{ secrets.gh_token }}"
           branch: "production-release-${{ inputs.app_name }}-${{ inputs.image_tag }}"
           base: main
