@@ -44,8 +44,8 @@ jobs:
         uses: github-actions-x/commit@v2.9
         with:
           github-token: "${{ secrets.gh_token }}"
-          push-branch: "production-release-${{ inputs.app_name }}-{{ inputs.image_tag }}"
-          commit-message: "Updated image version {{ inputs.image_tag }} for application ${{ inputs.app_name }}"
+          push-branch: "production-release-${{ inputs.app_name }}-${{ inputs.image_tag }}"
+          commit-message: "Updated image version ${{ inputs.image_tag }} for application ${{ inputs.app_name }}"
           files: "helmwave/prod/versions.yml"
           name: "Promote to production workflow"
 
@@ -54,7 +54,7 @@ jobs:
         with:
           token: "${{ secrets.gh_token }}"
           repository: "propeller-heads/ci-cd-templates-dont-remove"
-          head: "production-release-${{ inputs.app_name }}-{{ inputs.image_tag }}"
+          head: "production-release-${{ inputs.app_name }}-${{ inputs.image_tag }}"
           base: main
           title: "Automated PR from promote-to-production workflow from repository ${{ inputs.app_name }}"
           body: "This PR was created automatically by promote-to-production workflow from ${{ inputs.app_name }}"
