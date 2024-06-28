@@ -1,4 +1,4 @@
-name: Release
+name: "Build and push docker image"
 
 on:
   workflow_call:
@@ -7,13 +7,63 @@ on:
         required: false
         type: string
         default: ubuntu-latest
+        description: "Runner tag for workflow"
+      role_to_assume:
+        required: false
+        type: string
+        default: "arn:aws:iam::827659017777:role/github-actions"
+        description: "ARN role to assume"
+      aws_region:
+        required: false
+        type: string
+        default: "eu-central-1"
+        description: "Default AWS region"
+      image_tag:
+        required: true
+        type: string
+        description: "Image tag for docker artifact"
+      cache:
+        required: false
+        type: boolean
+        default: true
+        description: "Enable or disable cache for kaniko"
+      app_name:
+        required: true
+        type: string
+        description: "Application name"
+      repository_url:
+        required: true
+        type: string
+        default: "827659017777.dkr.ecr.eu-central-1.amazonaws.com"
+        description: "Repository URL"
+      build_args:
+        required: false
+        type: string
+        description: "Build args"
 
 jobs:
   build-and-push:
-    runs-on: '${{ inputs.runs_on }}'
+    runs-on: "${{ inputs.runs_on }}"
     steps:
-      - name: Checkout
+      - name: "Checkout"
         uses: actions/checkout@v4
-      - name: 'Build and push image to GAR'
-        run: |
-            echo "Build and push"
+
+      - name: "Assume role"
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: "${{ inputs.role_to_assume }}"
+          audience: sts.amazonaws.com
+          aws-region: "${{ inputs.aws_region }}"
+
+      - name: Login in ECR
+        uses: aws-actions/amazon-ecr-login@v2
+        id: ecr
+
+      - name: Build and push docker image
+        uses: int128/kaniko-action@v1
+        with:
+          push: true
+          tags: "${{ inputs.repository_url }}/${{ inputs.app_name }}:${{ inputs.image_tag }}"
+          cache: "${{ inputs.cache }}"
+          cache-repository: "${{ inputs.repository_url }}/${{ inputs.app_name }}"
+          build-args: "${{ inputs.build_args }}"
