@@ -1,7 +1,7 @@
-example-app-dont-remove1:
+example_app_dont_remove1:
   repository: 827659017777.dkr.ecr.eu-central-1.amazonaws.com/example-app-dont-remove
   tag: 1.3.4
 
-example-app-dont-remove2:
+example_app_dont_remove2:
   repository: 827659017777.dkr.ecr.eu-central-1.amazonaws.com/example-app-dont-remove
   tag: 1.3.4
