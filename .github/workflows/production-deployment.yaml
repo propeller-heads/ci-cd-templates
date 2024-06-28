@@ -5,7 +5,7 @@ on:
     branches:
       - main
     paths:
-      - 'helmwave/prod/*'
+      - 'helmwave/prod/**'
 
 env:
   AWS_DEPLOYMENT_ROLE: "arn:aws:iam::827659017777:role/github-actions"

@@ -12,3 +12,4 @@ resources:
 
 nameOverride: example-app-dont-remove1
 fullnameOverride: example-app-dont-remove1
+
