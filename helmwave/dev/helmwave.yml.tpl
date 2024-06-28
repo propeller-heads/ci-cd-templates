@@ -1,5 +1,5 @@
-project: "Newo release template"
-version: "0.33.0"
+project: "Release template"
+version: "0.37.1"
 
 releases:
   - name: {{ requiredEnv "APP_NAME"}}
