@@ -1,4 +1,4 @@
-name: "Deployment dev"
+name: Deployment dev
 
 on:
   workflow_call:
@@ -7,61 +7,63 @@ on:
         required: false
         type: string
         default: ubuntu-latest
-        description: "Runner tag for workflow"
+        description: Runner tag for workflow
       timeout_minutes:
         required: false
         type: number
         default: 30
-        description: "Timeout for workflow"
+        description: Timeout for workflow
       role_to_assume:
         required: false
         type: string
-        default: "arn:aws:iam::827659017777:role/github-actions"
-        description: "ARN role to assume"
+        default: arn:aws:iam::827659017777:role/github-actions
+        description: ARN role to assume
       aws_region:
         required: false
         type: string
-        default: "eu-central-1"
-        description: "Default AWS region"
+        default: eu-central-1
+        description: Default AWS region
       eks_cluster_name:
         required: false
         type: string
-        default: "dr-eks-prod"
-        description: "EKS cluster name"
+        default: dr-eks-prod
+        description: EKS cluster name
       image_tag:
         required: true
         type: string
-        description: "Image tag for docker artifact"
+        description: Image tag for docker artifact
       app_name:
         required: true
         type: string
-        description: "Application name"
+        description: Application name
       repository_url:
         required: false
         type: string
-        default: "827659017777.dkr.ecr.eu-central-1.amazonaws.com"
-        description: "Repository URL"
+        default: 827659017777.dkr.ecr.eu-central-1.amazonaws.com
+        description: Repository URL
       namespace:
         required: true
         type: string
-        description: "Namespace name"
+        description: Namespace name
     secrets:
       gh_token:
         required: true
 
+permissions: read-all
+
 jobs:
   deploy:
-    runs-on: '${{ inputs.runs_on }}'
+    runs-on: "${{ inputs.runs_on }}"
     steps:
-      - name: "Checkout helmwave values"
+      - name: Checkout helmwave values
         uses: actions/checkout@v4
         with:
-          repository: "propeller-heads/ci-cd-templates-dont-remove"
-          ref: 'main'
+          repository: propeller-heads/ci-cd-templates-dont-remove
+          ref: main
           token: ${{ secrets.gh_token }}
-          path: './tmp/'
+          path: ./tmp/
 
-      - name: "Install-aws-cli"
+      - name: Install-aws-cli
         uses: unfor19/install-aws-cli-action@v1
         with:
           version: 2
@@ -70,26 +72,26 @@ jobs:
           rootdir: ""
           workdir: ""
 
-      - name: "Assume role"
+      - name: Assume role
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: "${{ inputs.role_to_assume }}"
           audience: sts.amazonaws.com
           aws-region: "${{ inputs.aws_region }}"
 
-      - name: "Setup kubeconfig"
+      - name: Setup kubeconfig
         run: aws eks update-kubeconfig --name "${{ inputs.eks_cluster_name }}" --region "${{ inputs.aws_region }}"
 
-      - name: "Install helmwave"
+      - name: Install helmwave
         uses: helmwave/setup-action@v0.3.0
         with:
-          version: "0.37.1"
+          version: 0.37.1
 
-      - name: "Deploy app uses helmwave"
+      - name: Deploy app uses helmwave
         run: |
-              cd ./tmp/helmwave/dev
-              helmwave yml
-              helmwave up --build
+          cd ./tmp/helmwave/dev
+          helmwave yml
+          helmwave up --build
         env:
           REPOSITORY_URL: "${{ inputs.repository_url }}/${{ inputs.app_name }}"
           IMAGE_TAG: "${{ inputs.image_tag }}"

@@ -1,17 +1,19 @@
-name: "Production deployment"
+name: Production deployment
 
 on:
   push:
     branches:
       - main
     paths:
-      - 'helmwave/prod/**'
+      - helmwave/prod/**
 
 env:
-  AWS_DEPLOYMENT_ROLE: "arn:aws:iam::827659017777:role/github-actions"
-  AWS_REGION: "eu-central-1"
-  AWS_EKS_CLUSTER_NAME: "dr-eks-prod"
+  AWS_DEPLOYMENT_ROLE: arn:aws:iam::827659017777:role/github-actions
+  AWS_REGION: eu-central-1
+  AWS_EKS_CLUSTER_NAME: dr-eks-prod
   HELMWAVE_KUBEDOG_ENABLED: true
+
+permissions: read-all
 
 jobs:
   deploy-prod:
@@ -20,10 +22,10 @@ jobs:
       id-token: write
       contents: read
     steps:
-      - name: "Checkout"
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: "Install-aws-cli"
+      - name: Install-aws-cli
         uses: unfor19/install-aws-cli-action@v1
         with:
           version: 2
@@ -32,23 +34,23 @@ jobs:
           rootdir: ""
           workdir: ""
 
-      - name: "Assume role"
+      - name: Assume role
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: "${{ env.AWS_DEPLOYMENT_ROLE }}"
           audience: sts.amazonaws.com
           aws-region: "${{ env.AWS_REGION }}"
 
-      - name: "Setup kubeconfig"
+      - name: Setup kubeconfig
         run: aws eks update-kubeconfig --name "${{ env.AWS_EKS_CLUSTER_NAME }}" --region "${{ env.AWS_REGION }}"
 
-      - name: "Install helmwave"
+      - name: Install helmwave
         uses: helmwave/setup-action@v0.3.0
         with:
-          version: "0.37.1"
+          version: 0.37.1
 
-      - name: "Deploy app uses helmwave"
+      - name: Deploy app uses helmwave
         run: |
-              cd ./helmwave/prod
-              helmwave yml
-              helmwave up --build
+          cd ./helmwave/prod
+          helmwave yml
+          helmwave up --build

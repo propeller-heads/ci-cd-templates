@@ -1,4 +1,4 @@
-name: "Build and push docker image"
+name: Build and push docker image
 
 on:
   workflow_call:
@@ -7,54 +7,56 @@ on:
         required: false
         type: string
         default: ubuntu-latest
-        description: "Runner tag for workflow"
+        description: Runner tag for workflow
       timeout_minutes:
         required: false
         type: number
         default: 30
-        description: "Timeout for workflow"
+        description: Timeout for workflow
       role_to_assume:
         required: false
         type: string
-        default: "arn:aws:iam::827659017777:role/github-actions"
-        description: "ARN role to assume"
+        default: arn:aws:iam::827659017777:role/github-actions
+        description: ARN role to assume
       aws_region:
         required: false
         type: string
-        default: "eu-central-1"
-        description: "Default AWS region"
+        default: eu-central-1
+        description: Default AWS region
       image_tag:
         required: true
         type: string
-        description: "Image tag for docker artifact"
+        description: Image tag for docker artifact
       cache:
         required: false
         type: boolean
         default: true
-        description: "Enable or disable cache for kaniko"
+        description: Enable or disable cache for kaniko
       app_name:
         required: true
         type: string
-        description: "Application name"
+        description: Application name
       repository_url:
         required: false
         type: string
-        default: "827659017777.dkr.ecr.eu-central-1.amazonaws.com"
-        description: "Repository URL"
+        default: 827659017777.dkr.ecr.eu-central-1.amazonaws.com
+        description: Repository URL
       build_args:
         required: false
         type: string
-        description: "Build args"
+        description: Build args
+
+permissions: read-all
 
 jobs:
   build-and-push:
     runs-on: "${{ inputs.runs_on }}"
     timeout-minutes: "${{ inputs.timeout_minutes }}"
     steps:
-      - name: "Checkout"
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: "Assume role"
+      - name: Assume role
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: "${{ inputs.role_to_assume }}"

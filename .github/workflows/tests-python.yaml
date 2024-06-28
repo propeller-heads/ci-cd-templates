@@ -1,6 +1,6 @@
-name: "Test code use PyTest"
+name: Test code use PyTest
 
-on: 
+on:
   workflow_call:
     inputs:
       runs_on:
@@ -14,22 +14,24 @@ on:
       python_version:
         required: false
         type: string
-        default: '3.12'
+        default: 3.12
+
+permissions: read-all
 
 jobs:
   test-python-code:
-    runs-on: '${{ inputs.runs_on }}'
+    runs-on: "${{ inputs.runs_on }}"
     timeout-minutes: ${{ inputs.timeout_minutes }}
     steps:
-      - name: "Checkout"
+      - name: Checkout
         uses: actions/checkout@v4
 
       - name: Set up Python environment
         uses: actions/setup-python@v5
         with:
-          python-version: '${{ inputs.python_version }}'
+          python-version: "${{ inputs.python_version }}"
         id: setup_python
 
-      - name: "Python tests"
+      - name: Python tests
         run: |
           echo "Run tests"

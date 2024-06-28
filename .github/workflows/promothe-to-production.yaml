@@ -1,4 +1,4 @@
-name: "Promote to production"
+name: Promote to production
 
 on:
   workflow_call:
@@ -6,7 +6,7 @@ on:
       runs_on:
         required: false
         type: string
-        default: "ubuntu-latest"
+        default: ubuntu-latest
       timeout_minutes:
         required: false
         type: number
@@ -14,49 +14,51 @@ on:
       image_tag:
         required: true
         type: string
-        description: "Image tag for production"
+        description: Image tag for production
       app_name:
         required: true
         type: string
-        description: "Application name"
+        description: Application name
       assignees:
         required: false
         type: string
-        description: "PR assignees"
+        description: PR assignees
       reviewers:
         required: false
         type: string
-        description: "PR reviewers"
+        description: PR reviewers
     secrets:
       gh_token:
         required: true
 
+permissions: read-all
+
 jobs:
   promote-to-production:
-    runs-on: '${{ inputs.runs_on }}'
+    runs-on: "${{ inputs.runs_on }}"
     steps:
-      - name: "Install yq"
+      - name: Install yq
         run: sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
 
-      - name: "Checkout ci/cd templates"
+      - name: Checkout ci/cd templates
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          repository: "propeller-heads/ci-cd-templates-dont-remove"
-          ref: "main"
+          repository: propeller-heads/ci-cd-templates-dont-remove
+          ref: main
           token: "${{ secrets.gh_token }}"
 
-      - name: "Replace release version"
-        run: | 
+      - name: Replace release version
+        run: |
           yq eval '.${{ inputs.app_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/prod/versions.yml
 
-      - name: "Create pull request"
+      - name: Create pull request
         uses: peter-evans/create-pull-request@v6
         with:
           commit-message: "Updated image version ${{ inputs.image_tag }} for application ${{ inputs.app_name }}"
-          add-paths: | 
+          add-paths: |
             helmwave/prod/versions.yml
-          token: "${{ secrets.gh_token }}"
+          token: ${{ secrets.gh_token }}
           branch: "production-release-${{ inputs.app_name }}-${{ inputs.image_tag }}"
           title: "Automated PR from repository ${{ inputs.app_name }}"
           delete-branch: true
