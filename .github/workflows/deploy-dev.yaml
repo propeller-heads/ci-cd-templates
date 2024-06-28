@@ -41,6 +41,10 @@ on:
         type: string
         default: "827659017777.dkr.ecr.eu-central-1.amazonaws.com"
         description: "Repository URL"
+      namespace:
+        required: true
+        type: string
+        description: "Namespace name"
 
 jobs:
   deploy:
@@ -87,5 +91,5 @@ jobs:
           REPOSITORY_URL: "${{ inputs.repository_url }}/${{ inputs.app_name }}"
           IMAGE_TAG: "${{ inputs.image_tag }}"
           APP_NAME: "${{ inputs.app_name }}"
-          NAMESPACE: '${{ inputs.namespace }}'
+          NAMESPACE: "${{ inputs.namespace }}"
           HELMWAVE_KUBEDOG_ENABLED: true
