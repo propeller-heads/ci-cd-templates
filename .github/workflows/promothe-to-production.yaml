@@ -29,7 +29,7 @@ on:
 
 
 jobs:
-  build:
+  promote-to-production:
     runs-on: '${{ inputs.runs_on }}'
     steps:
       - name: Install yq
