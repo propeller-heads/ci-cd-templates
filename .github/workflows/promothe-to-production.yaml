@@ -6,11 +6,15 @@ on:
       runs_on:
         required: false
         type: string
-        default: ubuntu-latest
+        default: "ubuntu-latest"
       image_tag:
         required: true
         type: string
-        description: Image tag for production
+        description: "Image tag for production"
+      app_name:
+        required: true
+        type: string
+        description: "Application name"
     secrets:
       gh_token:
         required: true
@@ -51,4 +55,3 @@ jobs:
           base: main
           title: "Automated PR from promote-to-production workflow from repository ${{ inputs.app_name }}"
           body: "This PR was created automatically by promote-to-production workflow from ${{ inputs.app_name }}"
-
