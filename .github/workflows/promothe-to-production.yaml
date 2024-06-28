@@ -57,8 +57,8 @@ jobs:
           add-paths: | 
             helmwave/prod/versions.yml
           token: "${{ secrets.gh_token }}"
-          branch: "production-release-${{ inputs.app_name }}-${{ inputs.image_tag }}"
-          base: main
+          branch: main
+          base: "production-release-${{ inputs.app_name }}-${{ inputs.image_tag }}"
           title: "Automated PR from promote-to-production workflow from repository ${{ inputs.app_name }}"
           body: |
             This PR was created automatically by promote-to-production workflow from ${{ inputs.app_name }} repository
