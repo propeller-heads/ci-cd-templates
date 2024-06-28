@@ -15,6 +15,14 @@ on:
         required: true
         type: string
         description: "Application name"
+      assignees:
+        required: false
+        type: string
+        description: "PR assignees"
+      reviewers:
+        required: false
+        type: string
+        description: "PR reviewers"
     secrets:
       gh_token:
         required: true
@@ -36,19 +44,8 @@ jobs:
           token: "${{ secrets.gh_token }}"
 
       - name: "Replace release version"
-        run: |
-          #git checkout -b production-release-${{ inputs.app_name }}-${{ inputs.image_tag }}
-          export app_name=$(echo ${{ inputs.app_name }} | tr -s "-" "_") 
-          yq eval '.$app_name.tag="${{ inputs.image_tag }}"' -i helmwave/prod/versions.yml
-
-#      - name: "Push to ci-cd-templates repository"
-#        uses: github-actions-x/commit@v2.9
-#        with:
-#          github-token: "${{ secrets.gh_token }}"
-#          push-branch: "production-release-${{ inputs.app_name }}-${{ inputs.image_tag }}"
-#          commit-message: "Updated image version ${{ inputs.image_tag }} for application ${{ inputs.app_name }}"
-#          files: "helmwave/prod/versions.yml"
-#          name: "Promote to production workflow"
+        run: | 
+          yq eval '.${{ inputs.app_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/prod/versions.yml
 
       - name: "Create pull request"
         uses: peter-evans/create-pull-request@v6
@@ -58,9 +55,10 @@ jobs:
             helmwave/prod/versions.yml
           token: "${{ secrets.gh_token }}"
           branch: "production-release-${{ inputs.app_name }}-${{ inputs.image_tag }}"
-          title: "Automated PR from promote-to-production workflow from repository ${{ inputs.app_name }}"
+          title: "Automated PR from from repository ${{ inputs.app_name }}"
           body: |
-            This PR was created automatically by promote-to-production workflow from ${{ inputs.app_name }} repository
-            - Updated image for ${{ inputs.app_name }} - version ${{ inputs.image_tag }}
-          assignees: khalezin
+            This PR was created automatically by promote-to-production workflow from ${{ inputs.app_name }} repository.
+            - Updated image tag for ${{ inputs.app_name }} to ${{ inputs.image_tag }}.
+          assignees: ${{ inputs.assignees }}
+          reviewers: ${{ inputs.reviewers }}
 

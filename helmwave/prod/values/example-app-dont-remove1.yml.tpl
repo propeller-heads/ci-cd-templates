@@ -1,7 +1,7 @@
 {{- $data := ( readFile "versions.yml" | fromYaml ) }}
 image:
-  repository: {{ $data.example_app_dont_remove1.repository }}
-  tag: {{ $data.example_app_dont_remove1.tag }}
+  repository: {{ index $data "example-app-dont-remove1" "repository" }}
+  tag: {{ index $data "example-app-dont-remove1" "tag" }}
 
 resources:
   limits:
