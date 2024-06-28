@@ -15,8 +15,6 @@ on:
       gh_token:
         required: true
 
-permissions: read-all
-
 jobs:
   main:
     runs-on: "${{ inputs.runs_on }}"

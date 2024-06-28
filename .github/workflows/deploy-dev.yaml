@@ -49,8 +49,6 @@ on:
       gh_token:
         required: true
 
-permissions: read-all
-
 jobs:
   deploy:
     runs-on: "${{ inputs.runs_on }}"

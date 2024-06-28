@@ -16,8 +16,6 @@ on:
         type: string
         default: 3.12
 
-permissions: read-all
-
 jobs:
   test-python-code:
     runs-on: "${{ inputs.runs_on }}"

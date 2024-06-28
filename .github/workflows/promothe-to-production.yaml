@@ -31,8 +31,6 @@ on:
       gh_token:
         required: true
 
-permissions: read-all
-
 jobs:
   promote-to-production:
     runs-on: "${{ inputs.runs_on }}"

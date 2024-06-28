@@ -13,8 +13,6 @@ env:
   AWS_EKS_CLUSTER_NAME: dr-eks-prod
   HELMWAVE_KUBEDOG_ENABLED: true
 
-permissions: read-all
-
 jobs:
   deploy-prod:
     runs-on: ubuntu-latest

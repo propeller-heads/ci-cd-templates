@@ -18,8 +18,6 @@ on:
       next_release_version:
         value: ${{ jobs.release.outputs.NEXT_RELEASE_VERSION }}
 
-permissions: read-all
-
 jobs:
   release:
     name: release

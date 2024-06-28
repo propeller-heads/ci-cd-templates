@@ -46,8 +46,6 @@ on:
         type: string
         description: Build args
 
-permissions: read-all
-
 jobs:
   build-and-push:
     runs-on: "${{ inputs.runs_on }}"
