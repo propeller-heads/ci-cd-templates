@@ -11,14 +11,44 @@ on:
         required: true
         type: string
         description: Image tag for production
+    secrets:
+      gh_token:
+        required: true
+
 
 jobs:
-  deploy:
+  build:
     runs-on: '${{ inputs.runs_on }}'
     steps:
-      - name: "Create PR for production deployment"
-        run: | 
-          echo "Create PR for production deployment"
-          echo "${{ inputs.image_tag }}"
+      - name: "Checkout ci/cd templates"
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          repository: "propeller-heads/ci-cd-templates-dont-remove"
+          ref: "main"
+          token: "${{ secrets.gh_token }}"
 
+      - name: "Replace release version"
+        run: |
+          git checkout -b production-release-${{ inputs.app_name }}-{{ inputs.image_tag }}
+          yq eval '.${{ inputs.app_name }}.tag="{{ inputs.image_tag }}"' -i helmwave/prod/versions.yml
+
+      - name: "Push to ci-cd-templates repository"
+        uses: github-actions-x/commit@v2.9
+        with:
+          github-token: "${{ secrets.gh_token }}"
+          push-branch: "production-release-${{ inputs.app_name }}-{{ inputs.image_tag }}"
+          commit-message: "Updated image version {{ inputs.image_tag }} for application ${{ inputs.app_name }}"
+          files: "helmwave/prod/versions.yml"
+          name: "Promote to production workflow"
+
+      - name: "Create pull request"
+        uses: peter-evans/create-pull-request@v6
+        with:
+          token: "${{ secrets.gh_token }}"
+          repository: "propeller-heads/ci-cd-templates-dont-remove"
+          head: "production-release-${{ inputs.app_name }}-{{ inputs.image_tag }}"
+          base: main
+          title: "Automated PR from promote-to-production workflow from repository ${{ inputs.app_name }}"
+          body: "This PR was created automatically by promote-to-production workflow from ${{ inputs.app_name }}"
 
