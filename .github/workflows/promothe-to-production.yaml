@@ -55,10 +55,10 @@ jobs:
             helmwave/prod/versions.yml
           token: "${{ secrets.gh_token }}"
           branch: "production-release-${{ inputs.app_name }}-${{ inputs.image_tag }}"
-          title: "Automated PR from from repository ${{ inputs.app_name }}"
+          title: "Automated PR from repository ${{ inputs.app_name }}"
+          delete-branch: true
           body: |
-            This PR was created automatically by promote-to-production workflow from ${{ inputs.app_name }} repository.
+            This PR was created automatically by promote-to-production workflow from [${{ inputs.app_name }}](https://github.com/propeller-heads/${{ inputs.app_name }}) repository.
             - Updated image tag for ${{ inputs.app_name }} to ${{ inputs.image_tag }}.
-          assignees: ${{ inputs.assignees }}
-          reviewers: ${{ inputs.reviewers }}
-
+          assignees: "${{ inputs.assignees }}"
+          reviewers: "${{ inputs.reviewers }}"
