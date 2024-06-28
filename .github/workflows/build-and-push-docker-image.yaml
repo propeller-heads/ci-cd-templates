@@ -8,6 +8,11 @@ on:
         type: string
         default: ubuntu-latest
         description: "Runner tag for workflow"
+      timeout_minutes:
+        required: false
+        type: number
+        default: 30
+        description: "Timeout for workflow"
       role_to_assume:
         required: false
         type: string
@@ -44,6 +49,7 @@ on:
 jobs:
   build-and-push:
     runs-on: "${{ inputs.runs_on }}"
+    timeout-minutes: "${{ inputs.timeout_minutes }}"
     steps:
       - name: "Checkout"
         uses: actions/checkout@v4
