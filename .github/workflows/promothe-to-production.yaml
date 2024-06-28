@@ -24,6 +24,9 @@ jobs:
   build:
     runs-on: '${{ inputs.runs_on }}'
     steps:
+      - name: Install yq
+        run: sudo apt update && sudo apt install -y yq
+
       - name: "Checkout ci/cd templates"
         uses: actions/checkout@v4
         with:
@@ -32,10 +35,11 @@ jobs:
           ref: "main"
           token: "${{ secrets.gh_token }}"
 
+
       - name: "Replace release version"
         run: |
-          git checkout -b production-release-${{ inputs.app_name }}-{{ inputs.image_tag }}
-          yq eval '.${{ inputs.app_name }}.tag="{{ inputs.image_tag }}"' -i helmwave/prod/versions.yml
+          git checkout -b production-release-${{ inputs.app_name }}-${{ inputs.image_tag }}
+          yq eval '.${{ inputs.app_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/prod/versions.yml
 
       - name: "Push to ci-cd-templates repository"
         uses: github-actions-x/commit@v2.9
