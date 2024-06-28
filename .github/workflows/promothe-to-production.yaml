@@ -54,7 +54,6 @@ jobs:
         uses: peter-evans/create-pull-request@v6
         with:
           token: "${{ secrets.gh_token }}"
-          repository: "propeller-heads/ci-cd-templates-dont-remove"
           branch: "production-release-${{ inputs.app_name }}-${{ inputs.image_tag }}"
           delete-branch: true
           base: main
