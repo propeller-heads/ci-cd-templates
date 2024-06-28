@@ -37,7 +37,7 @@ jobs:
 
       - name: "Replace release version"
         run: |
-          git checkout -b production-release-${{ inputs.app_name }}-${{ inputs.image_tag }}
+          #git checkout -b production-release-${{ inputs.app_name }}-${{ inputs.image_tag }}
           export app_name=$(echo ${{ inputs.app_name }} | tr -s "-" "_") 
           yq eval '.$app_name.tag="${{ inputs.image_tag }}"' -i helmwave/prod/versions.yml
 
@@ -57,8 +57,7 @@ jobs:
           add-paths: | 
             helmwave/prod/versions.yml
           token: "${{ secrets.gh_token }}"
-          branch: main
-          base: "production-release-${{ inputs.app_name }}-${{ inputs.image_tag }}"
+          branch: "production-release-${{ inputs.app_name }}-${{ inputs.image_tag }}"
           title: "Automated PR from promote-to-production workflow from repository ${{ inputs.app_name }}"
           body: |
             This PR was created automatically by promote-to-production workflow from ${{ inputs.app_name }} repository
