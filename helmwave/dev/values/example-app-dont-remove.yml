@@ -4,3 +4,6 @@ resources:
   requests:
     cpu: 100m
     memory: 256Mi
+
+nameOverride: example-app-dont-remove
+fullnameOverride: example-app-dont-remove
