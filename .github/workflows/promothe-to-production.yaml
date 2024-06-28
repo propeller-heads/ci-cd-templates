@@ -27,7 +27,6 @@ on:
       gh_token:
         required: true
 
-
 jobs:
   promote-to-production:
     runs-on: '${{ inputs.runs_on }}'
