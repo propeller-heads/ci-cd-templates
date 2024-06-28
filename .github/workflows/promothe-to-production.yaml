@@ -38,7 +38,7 @@ jobs:
       - name: "Replace release version"
         run: |
           git checkout -b production-release-${{ inputs.app_name }}-${{ inputs.image_tag }}
-          app_name=$(echo ${{ inputs.app_name }} | tr -s "-" "_") 
+          export app_name=$(echo ${{ inputs.app_name }} | tr -s "-" "_") 
           yq eval '.$app_name.tag="${{ inputs.image_tag }}"' -i helmwave/prod/versions.yml
 
       - name: "Push to ci-cd-templates repository"
