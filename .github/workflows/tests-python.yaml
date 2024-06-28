@@ -1,27 +1,28 @@
-name: Test code use PyTest
+name: "Test code use PyTest"
 
 on: 
   workflow_call:
     inputs:
-      python_version:
-        required: false
-        type: string
-        default: '3.12'
-      timeout_minutes:
-        required: false
-        type: number
-        default: 30
       runs_on:
         required: false
         type: string
         default: ubuntu-latest
+      timeout_minutes:
+        required: false
+        type: number
+        default: 30
+      python_version:
+        required: false
+        type: string
+        default: '3.12'
 
 jobs:
   test-python-code:
     runs-on: '${{ inputs.runs_on }}'
     timeout-minutes: ${{ inputs.timeout_minutes }}
     steps:
-      - uses: actions/checkout@v4
+      - name: "Checkout"
+        uses: actions/checkout@v4
 
       - name: Set up Python environment
         uses: actions/setup-python@v5
