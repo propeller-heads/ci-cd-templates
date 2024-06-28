@@ -55,7 +55,6 @@ jobs:
         with:
           token: "${{ secrets.gh_token }}"
           branch: "production-release-${{ inputs.app_name }}-${{ inputs.image_tag }}"
-          delete-branch: true
           base: main
           title: "Automated PR from promote-to-production workflow from repository ${{ inputs.app_name }}"
           body: |
