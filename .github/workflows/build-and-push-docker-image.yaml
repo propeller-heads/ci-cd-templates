@@ -32,7 +32,7 @@ on:
         type: string
         description: "Application name"
       repository_url:
-        required: true
+        required: false
         type: string
         default: "827659017777.dkr.ecr.eu-central-1.amazonaws.com"
         description: "Repository URL"
