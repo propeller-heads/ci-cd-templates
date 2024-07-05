@@ -65,6 +65,11 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
         id: ecr
 
+      - name: Login in pip codeartifact
+        run: |
+          CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain propeller --domain-owner 827659017777 --query authorizationToken --output text --duration 1800)
+          echo PIP_INDEX_URL="https://aws:${CODEARTIFACT_AUTH_TOKEN}@propeller-827659017777.d.codeartifact.eu-central-1.amazonaws.com/pypi/protosim/simple/" >> $GITHUB_ENV
+
       - name: Build and push docker image
         uses: int128/kaniko-action@v1
         with:
@@ -72,4 +77,8 @@ jobs:
           tags: "${{ inputs.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}"
           cache: "${{ inputs.cache }}"
           cache-repository: "${{ inputs.repository_url }}/${{ inputs.image_name }}"
-          build-args: "${{ inputs.build_args }}"
+          build-args: | 
+            "${{ PIP_INDEX_URL }}"
+            "${{ inputs.build_args }}"
+        env:
+          PIP_INDEX_URL: ${{ env.PIP_INDEX_URL }}
