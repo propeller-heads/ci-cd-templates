@@ -1,24 +1,37 @@
 name: Production deployment
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - helmwave/prod/**
-
-env:
-  AWS_DEPLOYMENT_ROLE: arn:aws:iam::827659017777:role/github-actions
-  AWS_REGION: eu-central-1
-  AWS_EKS_CLUSTER_NAME: dr-eks-prod
-  HELMWAVE_KUBEDOG_ENABLED: true
+  workflow_call:
+    inputs:
+      runs_on:
+        required: false
+        type: string
+        default: ubuntu-latest
+        description: Runner tag for workflow
+      timeout_minutes:
+        required: false
+        type: number
+        default: 30
+        description: Timeout for workflow
+      role_to_assume:
+        required: false
+        type: string
+        default: arn:aws:iam::827659017777:role/github-actions
+        description: ARN role to assume
+      aws_region:
+        required: false
+        type: string
+        default: eu-central-1
+        description: Default AWS region
+      eks_cluster_name:
+        required: false
+        type: string
+        default: dr-eks-prod
+        description: EKS cluster name
 
 jobs:
-  deploy-prod:
-    runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
+  deploy:
+    runs-on: "${{ inputs.runs_on }}"
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,12 +48,12 @@ jobs:
       - name: Assume role
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: "${{ env.AWS_DEPLOYMENT_ROLE }}"
+          role-to-assume: "${{ inputs.role_to_assume }}"
           audience: sts.amazonaws.com
-          aws-region: "${{ env.AWS_REGION }}"
+          aws-region: "${{ inputs.aws_region }}"
 
       - name: Setup kubeconfig
-        run: aws eks update-kubeconfig --name "${{ env.AWS_EKS_CLUSTER_NAME }}" --region "${{ env.AWS_REGION }}"
+        run: aws eks update-kubeconfig --name "${{ inputs.eks_cluster_name }}" --region "${{ inputs.aws_region }}"
 
       - name: Install helmwave
         uses: helmwave/setup-action@v0.3.0
@@ -49,6 +62,8 @@ jobs:
 
       - name: Deploy app uses helmwave
         run: |
-          cd ./helmwave/prod
+          cd ./tmp/helmwave/prod
           helmwave yml
           helmwave up --build
+        env:
+          HELMWAVE_KUBEDOG_ENABLED: true

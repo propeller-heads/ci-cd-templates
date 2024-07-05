@@ -32,8 +32,12 @@ on:
         required: true
         type: string
         description: Image tag for docker artifact
-      app_name:
+      image_name:
         required: true
+        type: string
+        description: Image name for docker artifact
+      app_name:
+        required: false
         type: string
         description: Application name
       repository_url:
@@ -41,10 +45,6 @@ on:
         type: string
         default: 827659017777.dkr.ecr.eu-central-1.amazonaws.com
         description: Repository URL
-      namespace:
-        required: true
-        type: string
-        description: Namespace name
     secrets:
       gh_token:
         required: true
@@ -56,7 +56,7 @@ jobs:
       - name: Checkout helmwave values
         uses: actions/checkout@v4
         with:
-          repository: propeller-heads/ci-cd-templates-dont-remove
+          repository: propeller-heads/ci-cd-templates
           ref: main
           token: ${{ secrets.gh_token }}
           path: ./tmp/
@@ -89,10 +89,9 @@ jobs:
         run: |
           cd ./tmp/helmwave/dev
           helmwave yml
-          helmwave up --build
+          helmwave up --build -t "{{ input.app_name }}"
         env:
-          REPOSITORY_URL: "${{ inputs.repository_url }}/${{ inputs.app_name }}"
+          REPOSITORY_URL: "${{ inputs.repository_url }}/${{ inputs.image_name }}"
           IMAGE_TAG: "${{ inputs.image_tag }}"
-          APP_NAME: "${{ inputs.app_name }}"
-          NAMESPACE: "${{ inputs.namespace }}"
+          IMAGE_NAME: "${{ inputs.image_name }}"
           HELMWAVE_KUBEDOG_ENABLED: true

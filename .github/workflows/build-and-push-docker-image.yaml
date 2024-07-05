@@ -27,15 +27,15 @@ on:
         required: true
         type: string
         description: Image tag for docker artifact
+      image_name:
+        required: true
+        type: string
+        description: Image name
       cache:
         required: false
         type: boolean
         default: true
         description: Enable or disable cache for kaniko
-      app_name:
-        required: true
-        type: string
-        description: Application name
       repository_url:
         required: false
         type: string
@@ -69,7 +69,7 @@ jobs:
         uses: int128/kaniko-action@v1
         with:
           push: true
-          tags: "${{ inputs.repository_url }}/${{ inputs.app_name }}:${{ inputs.image_tag }}"
+          tags: "${{ inputs.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}"
           cache: "${{ inputs.cache }}"
-          cache-repository: "${{ inputs.repository_url }}/${{ inputs.app_name }}"
+          cache-repository: "${{ inputs.repository_url }}/${{ inputs.image_name }}"
           build-args: "${{ inputs.build_args }}"
