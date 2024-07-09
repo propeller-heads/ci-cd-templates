@@ -77,4 +77,5 @@ jobs:
           tags: "${{ inputs.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}"
           cache: "${{ inputs.cache }}"
           cache-repository: "${{ inputs.repository_url }}/${{ inputs.image_name }}"
-          build-args: "PIP_INDEX_URL=${{ env.PIP_INDEX_URL }}"
+          build-args: 
+            - PIP_INDEX_URL={{ env.PIP_INDEX_URL }}
