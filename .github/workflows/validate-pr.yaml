@@ -23,10 +23,10 @@ jobs:
     steps:
       - name: Generate a token
         id: generate-token
-        uses: actions/create-github-app-token@v1
+        uses: getsentry/action-github-app-token@v2
         with:
-          app-id: ${{ secrets.app_id }}
-          private-key: ${{ secrets.app_private_key }}
+          app_id: ${{ secrets.app_id }}
+          private_key: ${{ secrets.app_private_key }}
 
       - name: Validate PR title
         uses: amannn/action-semantic-pull-request@v5
