@@ -46,19 +46,28 @@ on:
         default: 827659017777.dkr.ecr.eu-central-1.amazonaws.com
         description: Repository URL
     secrets:
-      gh_token:
+      app_id:
+        required: true
+      app_private_key:
         required: true
 
 jobs:
   deploy:
     runs-on: "${{ inputs.runs_on }}"
     steps:
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.app_id }}
+          private-key: ${{ secrets.app_private_key }}
+
       - name: Checkout helmwave values
         uses: actions/checkout@v4
         with:
           repository: propeller-heads/helm-configuration
           ref: main
-          token: ${{ secrets.gh_token }}
+          token: ${{ steps.generate-token.outputs.token }}
           path: ./tmp/
 
       - name: Install-aws-cli

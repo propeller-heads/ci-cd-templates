@@ -28,13 +28,22 @@ on:
         type: string
         description: PR reviewers
     secrets:
-      gh_token:
+      app_id:
+        required: true
+      app_private_key:
         required: true
 
 jobs:
   promote-to-production:
     runs-on: "${{ inputs.runs_on }}"
     steps:
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.app_id }}
+          private-key: ${{ secrets.app_private_key }}
+
       - name: Install yq
         run: sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
 
@@ -44,7 +53,7 @@ jobs:
           fetch-depth: 0
           repository: propeller-heads/ci-cd-templates-dont-remove
           ref: main
-          token: "${{ secrets.gh_token }}"
+          token: ${{ steps.generate-token.outputs.token }}
 
       - name: Replace release version
         run: |
@@ -56,7 +65,7 @@ jobs:
           commit-message: "Updated image version ${{ inputs.image_tag }} for application ${{ inputs.image_name }}"
           add-paths: |
             helmwave/prod/versions.yml
-          token: ${{ secrets.gh_token }}
+          token: ${{ steps.generate-token.outputs.token }}
           branch: "production-release-${{ inputs.image_name }}-${{ inputs.image_tag }}"
           title: "Automated PR from repository ${{ inputs.image_name }}"
           delete-branch: true

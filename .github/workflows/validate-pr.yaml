@@ -12,17 +12,26 @@ on:
         type: number
         default: 30
     secrets:
-      gh_token:
+      app_id:
+        required: true
+      app_private_key:
         required: true
 
 jobs:
   main:
     runs-on: "${{ inputs.runs_on }}"
     steps:
+      - name: Generate a token
+        id: generate-token
+        uses: actions/create-github-app-token@v1
+        with:
+          app-id: ${{ secrets.app_id }}
+          private-key: ${{ secrets.app_private_key }}
+
       - name: Validate PR title
         uses: amannn/action-semantic-pull-request@v5
         env:
-          GITHUB_TOKEN: ${{ secrets.gh_token }}
+          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
         with:
           types: |
             breaking
