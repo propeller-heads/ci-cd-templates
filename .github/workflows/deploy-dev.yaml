@@ -102,5 +102,4 @@ jobs:
         env:
           REPOSITORY_URL: "${{ inputs.repository_url }}/${{ inputs.image_name }}"
           IMAGE_TAG: "${{ inputs.image_tag }}"
-          IMAGE_NAME: "${{ inputs.image_name }}"
           HELMWAVE_KUBEDOG_ENABLED: true
