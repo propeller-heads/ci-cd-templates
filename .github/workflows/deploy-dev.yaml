@@ -98,8 +98,9 @@ jobs:
         run: |
           cd ./tmp/helmwave/dev
           helmwave yml
-          helmwave up --build -t "${{ inputs.app_name }}"
+          helmwave up --build
         env:
           REPOSITORY_URL: "${{ inputs.repository_url }}/${{ inputs.image_name }}"
-          IMAGE_TAG: "${{ inputs.image_tag }}"
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          HELMWAVE_TAGS: ${{ inputs.app_name }}
           HELMWAVE_KUBEDOG_ENABLED: true
