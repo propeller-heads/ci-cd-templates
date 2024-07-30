@@ -31,8 +31,6 @@ on:
         type: string
         default: true
 
-
-
 jobs:
   formatting-python:
     runs-on: "${{ inputs.runs_on }}"
