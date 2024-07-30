@@ -1,0 +1,45 @@
+name: Test code use PyTest
+
+on:
+  workflow_call:
+    inputs:
+      runs_on:
+        required: false
+        type: string
+        default: ubuntu-latest
+      timeout_minutes:
+        required: false
+        type: number
+        default: 15
+      python_version:
+        required: false
+        type: string
+        default: 3.9
+      black_args:
+        required: false
+        type: string
+
+jobs:
+  test-python:
+    runs-on: "${{ inputs.runs_on }}"
+    timeout-minutes: "${{ inputs.timeout_minutes }}"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Python environment
+        uses: actions/setup-python@v5
+        with:
+          python-version: "${{ inputs.python_version }}"
+          cache: 'pip'
+
+      - name: black Lint
+        uses: rickstaa/action-black@v1
+        with:
+          black_args: '${{ inputs.black_args }}'
+
+      - name: Documentation Check
+        run: |
+            interrogate

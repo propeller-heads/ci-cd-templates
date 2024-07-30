@@ -45,6 +45,10 @@ on:
         required: false
         type: string
         description: Build args
+      tycho_client_version:
+        type: string
+        default: 'tycho-client-x86_64-unknown-linux-gnu-0.7.1.tar.gz'
+        required: false
 
 jobs:
   build-and-push:
@@ -64,6 +68,22 @@ jobs:
       - name: Login in ECR
         uses: aws-actions/amazon-ecr-login@v2
         id: ecr
+
+      - name: Download Tycho-client from S3
+        run: |
+            # Ensure the manifest file is empty or create it if it doesn't exist
+            MANIFEST_FILE="manifest.txt"
+            echo -n "" > "$MANIFEST_FILE"
+            # Determine the tycho_client_version to use
+            echo "Using tycho_client_version: ${{ inputs.tycho_client_version }}"
+            FILE=${{ inputs.tycho_client_version }}
+            echo "Tycho-client binary: $FILE"
+            aws s3 cp s3://repo.propellerheads/tycho-client/$FILE ./
+            tar -xzf $FILE
+            EXTRACTED_NAME=$(tar -tzf $FILE | grep tycho-client | head -n 1)
+            mv $EXTRACTED_NAME ./defibot/tycho/bins/tycho-client-linux-x64
+            echo "$FILE" > "$MANIFEST_FILE"
+            rm $FILE
 
       - name: Login in pip codeartifact
         run: |
