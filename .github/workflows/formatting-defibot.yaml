@@ -29,7 +29,7 @@ on:
       black_jupyter:
         required: false
         type: string
-        default: true
+        default: false
 
 jobs:
   formatting-python:
