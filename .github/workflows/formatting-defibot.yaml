@@ -30,6 +30,10 @@ on:
         required: false
         type: string
         default: false
+      black_summary:
+        required: false
+        type: string
+        default: false
 
 jobs:
   formatting-python:
@@ -54,6 +58,7 @@ jobs:
           src: "${{ inputs.black_src }}"
           jupyter: "${{ inputs.black_jupyter }}"
           version: "${{ inputs.black_version }}"
+          summary: "${{ inputs.black_summary }}"
 
       - name: Documentation Check
         run: |
