@@ -25,7 +25,6 @@ on:
       black_version:
         required: false
         type: string
-        default: "21.5b2"
       black_jupyter:
         required: false
         type: string
