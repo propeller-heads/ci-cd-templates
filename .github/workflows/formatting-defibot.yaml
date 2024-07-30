@@ -34,6 +34,10 @@ on:
         required: false
         type: string
         default: false
+      black_use_pyproject:
+        required: false
+        type: string
+        default: true
 
 jobs:
   formatting-python:
@@ -51,7 +55,12 @@ jobs:
           python-version: "${{ inputs.python_version }}"
           cache: 'pip'
 
-      - name: black Lint
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements/requirements_dev.txt
+
+      - name: Black Lint
         uses: psf/black@stable
         with:
           options: "${{ inputs.black_options }}"
@@ -59,6 +68,7 @@ jobs:
           jupyter: "${{ inputs.black_jupyter }}"
           version: "${{ inputs.black_version }}"
           summary: "${{ inputs.black_summary }}"
+          use_pyproject: "${{ inputs.use_pyproject }}"
 
       - name: Documentation Check
         run: |
