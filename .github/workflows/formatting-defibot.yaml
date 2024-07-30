@@ -15,9 +15,23 @@ on:
         required: false
         type: string
         default: 3.9
-      black_args:
+      black_options:
         required: false
         type: string
+        default: "--check --skip-magic-trailing-comma"
+      black_src:
+        required: false
+        type: string
+      black_version:
+        required: false
+        type: string
+        default: "21.5b2"
+      black_jupyter:
+        required: false
+        type: string
+        default: true
+
+
 
 jobs:
   formatting-python:
@@ -38,7 +52,15 @@ jobs:
       - name: black Lint
         uses: rickstaa/action-black@v1
         with:
-          black_args: '${{ inputs.black_args }}'
+          black_args: "${{ inputs.black_args }}"
+
+      - name: black Lint
+        uses: psf/black@stable
+        with:
+          options: "${{ inputs.black_options }}"
+          src: "${{ inputs.black_src }}"
+          jupyter: "${{ inputs.black_jupyter }}"
+          version: "${{ inputs.black_version }}"
 
       - name: Documentation Check
         run: |
