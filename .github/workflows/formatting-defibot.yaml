@@ -1,4 +1,4 @@
-name: Test code use PyTest
+name: Formatting python
 
 on:
   workflow_call:
@@ -20,7 +20,7 @@ on:
         type: string
 
 jobs:
-  test-python:
+  formatting-python:
     runs-on: "${{ inputs.runs_on }}"
     timeout-minutes: "${{ inputs.timeout_minutes }}"
     steps:
