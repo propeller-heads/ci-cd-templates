@@ -48,11 +48,6 @@ jobs:
           cache: 'pip'
 
       - name: black Lint
-        uses: rickstaa/action-black@v1
-        with:
-          black_args: "${{ inputs.black_args }}"
-
-      - name: black Lint
         uses: psf/black@stable
         with:
           options: "${{ inputs.black_options }}"
