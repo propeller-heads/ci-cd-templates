@@ -59,16 +59,10 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements/requirements_dev.txt
 
-      - name: Black Lint
-        uses: psf/black@stable
-        with:
-          options: "${{ inputs.black_options }}"
-          src: "${{ inputs.black_src }}"
-          jupyter: "${{ inputs.black_jupyter }}"
-          version: "${{ inputs.black_version }}"
-          summary: "${{ inputs.black_summary }}"
-          use_pyproject: "${{ inputs.use_pyproject }}"
+      - name: Black Formatting
+        run: |
+          black ./defibot --check --skip-magic-trailing-comma
 
       - name: Documentation Check
         run: |
-            interrogate
+          interrogate
