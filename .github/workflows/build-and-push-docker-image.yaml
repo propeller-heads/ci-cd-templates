@@ -70,6 +70,7 @@ jobs:
         id: ecr
 
       - name: Download Tycho-client from S3
+        if: "${{ inputs.image_name == 'defibot' }}"
         run: |
             # Ensure the manifest file is empty or create it if it doesn't exist
             MANIFEST_FILE="manifest.txt"
@@ -86,6 +87,7 @@ jobs:
             rm $FILE
 
       - name: Login in pip codeartifact
+        if: "${{ inputs.image_name == 'defibot' }}"
         run: |
           CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain propeller --domain-owner 827659017777 --query authorizationToken --output text --duration 1800)
           echo PIP_INDEX_URL="https://aws:${CODEARTIFACT_AUTH_TOKEN}@propeller-827659017777.d.codeartifact.eu-central-1.amazonaws.com/pypi/protosim/simple/" >> $GITHUB_ENV
