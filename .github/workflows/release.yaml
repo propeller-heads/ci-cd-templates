@@ -36,12 +36,7 @@ jobs:
 
       - name: Install git
         run: sudo apt update && sudo apt install -y git
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20.11.1
-
+        
       - name: Checkout
         uses: actions/checkout@v4
         with:
