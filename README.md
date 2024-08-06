@@ -13,10 +13,10 @@
 
 ### Release naming
 
-> v1.2.9
+> 1.2.9
 
 ```
-v - prefix 1 - major 2 - minor 9 - patch
+1 - major 2 - minor 9 - patch
 ```
 
 ### Requirements for commits naming
@@ -49,4 +49,4 @@ production
 
 # CI/CD flow
 
-![ci/cd flow](docs/ph-ci_cd.jpg)
+![ci/cd flow](docs/ph-ci-cd.jpg)
