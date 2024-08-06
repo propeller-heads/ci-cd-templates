@@ -45,9 +45,11 @@ on:
         required: false
         type: string
         description: Build args
+      tycho_client_version_default:
+        type: string
+        required: false
       tycho_client_version:
         type: string
-        default: 'tycho-client-x86_64-unknown-linux-gnu-0.7.1.tar.gz'
         required: false
 
 jobs:
@@ -76,8 +78,13 @@ jobs:
             MANIFEST_FILE="manifest.txt"
             echo -n "" > "$MANIFEST_FILE"
             # Determine the tycho_client_version to use
-            echo "Using tycho_client_version: ${{ inputs.tycho_client_version }}"
-            FILE=${{ inputs.tycho_client_version }}
+            if [ -z "${{ inputs.tycho_client_version }}" ]; then
+              echo "Using default tycho_client_version: ${{ inputs.tycho_client_version_default }}"
+              FILE=${{ inputs.tycho_client_version_default }}
+            else
+              echo "Using provided tycho_client_version: ${{ inputs.tycho_client_version }}"
+              FILE=${{ inputs.tycho_client_version }}
+            fi
             echo "Tycho-client binary: $FILE"
             aws s3 cp s3://repo.propellerheads/tycho-client/$FILE ./
             tar -xzf $FILE
