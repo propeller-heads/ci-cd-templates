@@ -26,7 +26,6 @@ jobs:
     runs-on: "${{ inputs.runs_on }}"
     outputs:
       NEXT_RELEASE_VERSION: ${{ steps.semantic.outputs.NEXT_RELEASE_VERSION }}
-      LATEST_RELEASE_VERSION: ${{ steps.semantic.outputs.LATEST_RELEASE_VERSION }}
     steps:
       - name: Generate a token
         id: generate-token
@@ -67,14 +66,10 @@ jobs:
       - name: Validate Release
         env:
           NEXT_RELEASE_VERSION: ${{ steps.semantic.outputs.NEXT_RELEASE_VERSION }}
-          LATEST_RELEASE_VERSION: ${{ steps.semantic.outputs.LATEST_RELEASE_VERSION }}
         run: |
           if [ -z "$NEXT_RELEASE_VERSION" ]; then
             echo "Error: Empty release, exiting..."
-            echo "$NEXT_RELEASE_VERSION"
-            echo "$LATEST_RELEASE_VERSION"
             exit 1
           else
             echo "Release version is: $NEXT_RELEASE_VERSION"
-            echo "$LATEST_RELEASE_VERSION"
           fi
