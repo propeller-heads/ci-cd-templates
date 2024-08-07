@@ -55,4 +55,4 @@ jobs:
         uses: actions-js/push@master
         with:
           github_token: ${{ steps.generate-token.outputs.token }}
-          message: Update version of ${{ inputs.image_name }} with tag ${{ $image_tag }}
+          message: Update version of ${{ inputs.image_name }} with tag ${{ inputs.image_tag }}
