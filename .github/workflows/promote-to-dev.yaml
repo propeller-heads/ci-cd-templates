@@ -1,0 +1,58 @@
+name: Promote to production
+
+on:
+  workflow_call:
+    inputs:
+      runs_on:
+        required: false
+        type: string
+        default: ubuntu-latest
+      timeout_minutes:
+        required: false
+        type: number
+        default: 30
+      image_tag:
+        required: true
+        type: string
+        description: Image tag for production
+      image_name:
+        required: true
+        type: string
+        description: Application name
+    secrets:
+      app_id:
+        required: true
+      app_private_key:
+        required: true
+
+jobs:
+  promote-to-dev:
+    runs-on: "${{ inputs.runs_on }}"
+    steps:
+      - name: Generate a token
+        id: generate-token
+        uses: getsentry/action-github-app-token@v2
+        with:
+          app_id: ${{ secrets.app_id }}
+          private_key: ${{ secrets.app_private_key }}
+
+      - name: Install yq
+        run: sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+
+      - name: Checkout helm-configuration repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          repository: propeller-heads/helm-configuration
+          ref: main
+          token: ${{ steps.generate-token.outputs.token }}
+
+      - name: Replace release version
+        run: |
+          yq eval '.${{ inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/dev/versions.yml
+
+      - name: Commit & Push changes
+        uses: actions-js/push@master
+        with:
+          github_token: ${{ steps.generate-token.outputs.token }}
+          message: Update version of ${{ inputs.image_name }} with tag ${{ $image_tag }}
