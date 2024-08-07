@@ -1,0 +1,112 @@
+name: Deployment dev
+
+on:
+  workflow_call:
+    inputs:
+      runs_on:
+        required: false
+        type: string
+        default: ubuntu-latest
+        description: Runner tag for workflow
+      timeout_minutes:
+        required: false
+        type: number
+        default: 30
+        description: Timeout for workflow
+      role_to_assume:
+        required: false
+        type: string
+        default: arn:aws:iam::827659017777:role/github-actions
+        description: ARN role to assume
+      aws_region:
+        required: false
+        type: string
+        default: eu-central-1
+        description: Default AWS region
+      eks_cluster_name:
+        required: false
+        type: string
+        default: dr-eks-prod
+        description: EKS cluster name
+      image_tag:
+        required: true
+        type: string
+        description: Image tag for docker artifact
+      image_name:
+        required: true
+        type: string
+        description: Image name for docker artifact
+      app_name:
+        required: false
+        type: string
+        description: Application name
+      repository_url:
+        required: false
+        type: string
+        default: 827659017777.dkr.ecr.eu-central-1.amazonaws.com
+        description: Repository URL
+    secrets:
+      app_id:
+        required: true
+      app_private_key:
+        required: true
+
+jobs:
+  deploy:
+    runs-on: "${{ inputs.runs_on }}"
+    steps:
+      - name: Generate a token
+        id: generate-token
+        uses: getsentry/action-github-app-token@v2
+        with:
+          app_id: ${{ secrets.app_id }}
+          private_key: ${{ secrets.app_private_key }}
+
+      - name: Checkout helm-configuration repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          repository: propeller-heads/helm-configuration
+          ref: main
+          token: ${{ steps.generate-token.outputs.token }}
+
+      - name: Install yq
+        run: sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+
+      - name: Install-aws-cli
+        uses: unfor19/install-aws-cli-action@v1
+        with:
+          version: 2
+          verbose: false
+          arch: amd64
+          rootdir: ""
+          workdir: ""
+
+      - name: Assume role
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: "${{ inputs.role_to_assume }}"
+          audience: sts.amazonaws.com
+          aws-region: "${{ inputs.aws_region }}"
+
+      - name: Setup kubeconfig
+        run: aws eks update-kubeconfig --name "${{ inputs.eks_cluster_name }}" --region "${{ inputs.aws_region }}"
+
+      - name: Install helmwave
+        uses: helmwave/setup-action@v0.3.0
+        with:
+          version: 0.37.1
+
+      - name: Replace release version
+        run: |
+          yq eval '.${{ inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/dev/versions.yml
+          cat helmwave/dev/versions.yml
+
+      - name: Deploy app uses helmwave
+        run: |
+          cd helmwave/dev
+          helmwave yml
+          helmwave up --build
+        env:
+          HELMWAVE_TAGS: ${{ inputs.app_name }}
+          HELMWAVE_KUBEDOG_ENABLED: true
