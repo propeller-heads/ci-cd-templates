@@ -28,6 +28,10 @@ on:
         type: string
         default: dr-eks-prod
         description: EKS cluster name
+      slack_webhook_url:
+        required: true
+        type: string
+        description: Slack webhook url
     secrets:
       app_id:
         required: true
@@ -74,6 +78,12 @@ jobs:
         with:
           version: 0.37.1
 
+      - name: Slack Notification
+        run: bash scripts/slack-notify.sh started
+        env:
+          WORKFLOW_STATUS: ":large_blue_square: In Progress"
+          SLACK_WEBHOOK_URL: ${{ inputs.slack_webhook_url }}
+
       - name: Deploy app uses helmwave
         run: |
           cd helmwave/dev
@@ -81,3 +91,17 @@ jobs:
           helmwave up --build
         env:
           HELMWAVE_KUBEDOG_ENABLED: true
+
+      - name: Slack Notification
+        if: success()
+        run: bash scripts/slack-notify.sh succeed
+        env:
+          WORKFLOW_STATUS: ":large_green_square: Completed"
+          SLACK_WEBHOOK_URL: ${{ inputs.slack_webhook_url }}
+
+      - name: Slack Notification
+        if: failure()
+        run: bash scripts/slack-notify.sh failed
+        env:
+          WORKFLOW_STATUS: ":large_red_square: Failed"
+          SLACK_WEBHOOK_URL: ${{ inputs.slack_webhook_url }}
