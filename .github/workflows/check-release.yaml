@@ -65,3 +65,14 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: npx semantic-release ${{ inputs.args }}
+
+      - name: Validate Release
+        env:
+          NEXT_RELEASE_VERSION: ${{ steps.semantic.outputs.NEXT_RELEASE_VERSION }}
+        run: |
+          if [ -z "$NEXT_RELEASE_VERSION" ]; then
+            echo "Error: Empty release, exiting..."
+            exit 1
+          else
+            echo "Release version is: $NEXT_RELEASE_VERSION"
+          fi
