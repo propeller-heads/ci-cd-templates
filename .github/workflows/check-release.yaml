@@ -20,15 +20,15 @@ on:
       app_private_key:
         required: true
     outputs:
-      next_release_version:
-        value: ${{ jobs.release.outputs.NEXT_RELEASE_VERSION }}
+      verify_release_version:
+        value: ${{ jobs.release.outputs.VERIFY_RELEASE_VERSION }}
 
 jobs:
   release:
     name: release
     runs-on: "${{ inputs.runs_on }}"
     outputs:
-      NEXT_RELEASE_VERSION: ${{ steps.semantic.outputs.NEXT_RELEASE_VERSION }}
+      VERIFY_RELEASE_VERSION: ${{ steps.semantic.outputs.VERIFY_RELEASE_VERSION }}
     steps:
       - name: Generate a token
         id: generate-token
@@ -68,11 +68,11 @@ jobs:
 
       - name: Validate Release
         env:
-          NEXT_RELEASE_VERSION: ${{ steps.semantic.outputs.NEXT_RELEASE_VERSION }}
+          VERIFY_RELEASE_VERSION: ${{ steps.semantic.outputs.VERIFY_RELEASE_VERSION }}
         run: |
-          if [ -z "$NEXT_RELEASE_VERSION" ]; then
+          if [ -z "VERIFY_RELEASE_VERSION" ]; then
             echo "Error: Empty release, exiting..."
             exit 1
           else
-            echo "Release version is: $NEXT_RELEASE_VERSION"
+            echo "Release version is: VERIFY_RELEASE_VERSION"
           fi
