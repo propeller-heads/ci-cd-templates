@@ -51,6 +51,11 @@ on:
       tycho_client_version:
         type: string
         required: false
+    secrets:
+      gh_token:
+        required: false
+
+
 
 jobs:
   build-and-push:
@@ -98,6 +103,25 @@ jobs:
         run: |
           CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain propeller --domain-owner 827659017777 --query authorizationToken --output text --duration 1800)
           echo PIP_INDEX_URL="https://aws:${CODEARTIFACT_AUTH_TOKEN}@propeller-827659017777.d.codeartifact.eu-central-1.amazonaws.com/pypi/protosim/simple/" >> $GITHUB_ENV
+
+      - name: Setup git to use https
+        if: "${{ inputs.image_name == 'propeller-searcher' }}"
+        run: |
+            git config --global credential.helper store
+            echo "https://${{ secrets.gh_token }}@github.com" > ~/.git-credentials
+            git config --global url."https://${{ secrets.gh_token }}@github.com".insteadOf ssh://github.com
+
+      - name: Setup toolchain
+        if: "${{ inputs.image_name == 'propeller-searcher' }}"
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Pull private dependencies
+        if: "${{ inputs.image_name == 'propeller-searcher' }}"
+        run: |
+          export CARGO_HOME=$(pwd)/.cargo
+          cargo fetch
 
       - name: Build and push docker image
         uses: int128/kaniko-action@v1
