@@ -55,8 +55,6 @@ on:
       gh_token:
         required: false
 
-
-
 jobs:
   build-and-push:
     runs-on: "${{ inputs.runs_on }}"
