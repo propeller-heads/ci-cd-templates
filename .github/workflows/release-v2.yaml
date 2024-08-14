@@ -14,6 +14,10 @@ on:
       args:
         required: false
         type: string
+      python_version:
+        required: false
+        type: string
+        default: "3.12"
     secrets:
       app_id:
         required: true
@@ -48,6 +52,14 @@ jobs:
         with:
           fetch-depth: 0
           persist-credentials: false
+
+      - name: Set up Python environment
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Install toml-cli
+        run: pip install toml-cli
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
