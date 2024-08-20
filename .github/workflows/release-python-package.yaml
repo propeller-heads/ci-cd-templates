@@ -1,0 +1,190 @@
+name: Release Python Package
+
+on:
+  workflow_call:
+    inputs:
+      runs_on:
+        required: false
+        type: string
+        default: ubuntu-latest
+        description: Runner tag for workflow
+      aws_role_to_assume:
+        description: 'AWS role to assume'
+        required: true
+        type: string
+      aws_region:
+        description: 'AWS region'
+        required: true
+        type: string
+      repository:
+        description: 'Repository name'
+        required: true
+        type: string
+      domain:
+        description: 'AWS CodeArtifact domain'
+        required: true
+        type: string
+      domain_owner:
+        description: 'AWS CodeArtifact domain owner'
+        required: true
+        type: string
+      yum_packages:
+        description: "Packages to install using YUM (docker linux builds)"
+        required: false
+        type: string
+        default: "pkgconfig"
+      brew_packages:
+        description: "Packages to install using Homebrew (MacOS builds)"
+        required: false
+        type: string
+        default: ""
+      package_root:
+        description: "The root of the python project (containing pyproject.toml)"
+        required: true
+        type: string
+      use_maturin:
+        description: 'Whether to use maturin for building the wheel'
+        required: false
+        type: boolean
+        default: false
+      push:
+        description: "Whether to push the package once it is built"
+        required: false
+        default: true
+        type: boolean
+    secrets:
+      GH_TOKEN:
+        required: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  build_and_publish_package:
+    runs-on: "${{ inputs.runs_on }}"
+    steps:
+      - name: Check out Repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ inputs.aws_role_to_assume }}
+          audience: sts.amazonaws.com
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Install AWS CLI
+        uses: unfor19/install-aws-cli-action@v1
+        if: ${{ runner.os != 'macOS' }}
+        with:
+          version: 2
+          verbose: false
+          arch: amd64
+          rootdir: ""
+          workdir: ""
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.x'
+
+      - name: Install python package utils
+        run: |
+          python -m pip install --upgrade pip build twine
+
+      - name: Write Dockerfile | Build wheel for Linux (with maturin)
+        if: ${{ runner.os == 'Linux' && inputs.use_maturin }}
+        run: |
+          cat <<EOF > Dockerfile.wheel
+          FROM quay.io/pypa/manylinux2014_x86_64
+          
+          RUN yum install -y $${{ inputs.yum_packages }} && yum clean all
+          
+          RUN curl --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain=stable -y
+          
+          ENV PATH="/root/.cargo/bin:/opt/rh/devtoolset-10/root/usr/bin:$PATH"
+          
+          RUN /opt/python/cp39-cp39/bin/python -m pip install maturin
+          
+          WORKDIR /build
+          CMD /opt/python/cp39-cp39/bin/python -m maturin build --release --compatibility manylinux2014 -i /opt/python/cp39-cp39/bin/python
+          EOF
+          
+          cat Dockerfile.wheel
+
+      - name: Build Docker Image | Build wheel for Linux (with maturin)
+        uses: docker/build-push-action@v6
+        if: ${{ runner.os == 'Linux' && inputs.use_maturin }}
+        with:
+          context: .
+          tags: linux-wheel-builder
+          file: Dockerfile.wheel
+          push: false
+
+      - name: Build | Build wheel for Linux (with maturin)
+        uses: addnab/docker-run-action@v3
+        if: ${{ runner.os == 'Linux' && inputs.use_maturin }}
+        with:
+          image: linux-wheel-builder
+          options: -v ${{ github.workspace }}:/build
+          run: |
+            # allows resolving private git packages
+            git config --global credential.helper store
+            echo "https://${{ secrets.GH_TOKEN }}@github.com" > ~/.git-credentials
+            git config --global url."https://${{ secrets.GH_TOKEN }}@github.com".insteadOf ssh://github.com
+            
+            cd ${{ inputs.package_root }}
+            /opt/python/cp39-cp39/bin/python -m maturin build --release --compatibility manylinux2014 -i /opt/python/cp39-cp39/bin/python
+      
+
+      - name: Set up Homebrew | Build wheel for macOS (with maturin)
+        if: ${{ runner.os == 'macOS' && inputs.use_maturin }}
+        id: set-up-homebrew
+        uses: Homebrew/actions/setup-homebrew@master
+
+      - name: Setup Rust | Build wheel for macOS (with maturin)
+        if: ${{ runner.os == 'macOS' && inputs.use_maturin }}
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Setup Rust Cache | Build wheel for macOS (with maturin)
+        if: ${{ runner.os == 'macOS' && inputs.use_maturin }}
+        uses: Swatinem/rust-cache@v2
+        with:
+          cache-on-failure: true
+
+      - name: Build | Build wheel for macOS (with maturin)
+        if: ${{ runner.os == 'macOS' && inputs.use_maturin }}
+        run: |
+          if [ -n "${{ inputs.brew_packages }}" ]; then
+            brew install ${{ inputs.brew_packages }}
+          else
+            echo "No packages to install."
+          fi
+          pip install maturin
+          
+          git config --global credential.helper store
+          echo "https://${{ secrets.GH_TOKEN }}@github.com" > ~/.git-credentials
+          git config --global url."https://${{ secrets.GH_TOKEN }}@github.com".insteadOf ssh://github.com
+          
+          python -m maturin build --release
+
+      - name: Build wheel without maturin
+        if: ${{ !inputs.use_maturin }}
+        run: |
+          python -m build
+
+      - name: Publish Python distribution to AWS CodeArtifact
+        if: ${{ inputs.push }}
+        shell: bash
+        run: |
+          aws codeartifact login --tool twine --domain ${{ inputs.domain }} --domain-owner ${{ inputs.domain_owner }} --repository ${{ inputs.repository }}
+
+          if [ "${{ inputs.use_maturin }}" = "true" ]; then
+            twine upload --repository codeartifact ./target/wheels/*.whl
+          else
+            twine upload --repository codeartifact ./dist/*.whl ./dist/*.tar.gz
+          fi
