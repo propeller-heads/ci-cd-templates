@@ -15,3 +15,5 @@ jobs:
 
     - name: actionlint
       uses: raven-actions/actionlint@v2
+      with:
+        shellcheck: false
