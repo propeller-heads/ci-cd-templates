@@ -1,10 +1,7 @@
 on:
-  push:
+  pull_request:
     branches:
-      - ci/linters
-#  pull_request:
-#    branches:
-#      - main
+      - main
 
 jobs:
   lints:
