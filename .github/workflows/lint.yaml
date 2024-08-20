@@ -1,0 +1,11 @@
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  lints:
+    runs-on: ubuntu-latest
+    steps:
+    - name: actionlint
+      uses: raven-actions/actionlint@v2
