@@ -10,7 +10,8 @@ jobs:
   lints:
     runs-on: ubuntu-latest
     steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
     - name: actionlint
       uses: raven-actions/actionlint@v2
-      with:
-        files: "./.github/workflows/*.yaml"
