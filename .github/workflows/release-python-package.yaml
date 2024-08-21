@@ -59,7 +59,7 @@ on:
         type: boolean
     secrets:
       GH_TOKEN:
-        required: true
+        required: false
 
 env:
   CARGO_TERM_COLOR: always
