@@ -180,6 +180,7 @@ jobs:
       - name: Build wheel without maturin
         if: ${{ !inputs.use_maturin }}
         run: |
+          cd ${{ inputs.package_root }}
           python -m build
 
       - name: Publish Python distribution to AWS CodeArtifact
@@ -191,5 +192,6 @@ jobs:
           if [ "${{ inputs.use_maturin }}" = "true" ]; then
             twine upload --repository codeartifact ./target/wheels/*.whl
           else
+            cd ${{ inputs.package_root }}
             twine upload --repository codeartifact ./dist/*.whl ./dist/*.tar.gz
           fi
