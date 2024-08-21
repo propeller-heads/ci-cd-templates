@@ -3,6 +3,10 @@ name: Release Python Package
 on:
   workflow_call:
     inputs:
+      package_root:
+        description: "The root of the python project (containing pyproject.toml)"
+        required: true
+        type: string
       runs_on:
         required: false
         type: string
@@ -10,23 +14,28 @@ on:
         description: Runner tag for workflow
       aws_role_to_assume:
         description: 'AWS role to assume'
-        required: true
+        required: false
+        default: "arn:aws:iam::827659017777:role/github-actions"
         type: string
       aws_region:
         description: 'AWS region'
-        required: true
+        required: false
+        default: "eu-central-1"
         type: string
       repository:
         description: 'Repository name'
-        required: true
+        required: false
+        default: "protosim"
         type: string
       domain:
         description: 'AWS CodeArtifact domain'
-        required: true
+        required: false
+        default: "propeller"
         type: string
       domain_owner:
         description: 'AWS CodeArtifact domain owner'
-        required: true
+        required: false
+        default: "827659017777"
         type: string
       yum_packages:
         description: "Packages to install using YUM (docker linux builds)"
@@ -38,10 +47,6 @@ on:
         required: false
         type: string
         default: ""
-      package_root:
-        description: "The root of the python project (containing pyproject.toml)"
-        required: true
-        type: string
       use_maturin:
         description: 'Whether to use maturin for building the wheel'
         required: false
