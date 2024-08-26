@@ -11,7 +11,7 @@ on:
       timeout_minutes:
         required: false
         type: number
-        default: 30
+        default: 60
         description: Timeout for workflow
       role_to_assume:
         required: false
