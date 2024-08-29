@@ -57,7 +57,7 @@ jobs:
 
       - name: Replace release version
         run: |
-          yq eval '.${{ inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/prod/versions.yml
+          yq eval '${{ inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/prod/versions.yml
 
       - name: Create pull request
         uses: peter-evans/create-pull-request@v6
