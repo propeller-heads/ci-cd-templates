@@ -23,6 +23,8 @@ on:
         required: true
       app_private_key:
         required: true
+      gh_pat:
+        required: true
     outputs:
       next_release_version:
         value: ${{ jobs.release.outputs.NEXT_RELEASE_VERSION }}
