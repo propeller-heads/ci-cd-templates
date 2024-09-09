@@ -59,6 +59,11 @@ jobs:
             echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
             git config --global url."https://${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
 
+      - name: Pull private dependencies
+        run: |
+          export CARGO_HOME=$(pwd)/.cargo
+          cargo fetch
+
       - name: Set up Python environment
         uses: actions/setup-python@v4
         with:
