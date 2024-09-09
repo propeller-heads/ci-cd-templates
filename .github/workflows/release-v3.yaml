@@ -76,7 +76,6 @@ jobs:
         run: npm audit signatures
 
       - name: Setup git to use https
-        if: "${{ inputs.image_name == 'propeller-searcher' }}"
         run: |
             git config --global credential.helper store
             echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
