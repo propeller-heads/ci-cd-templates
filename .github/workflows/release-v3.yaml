@@ -56,8 +56,8 @@ jobs:
       - name: Setup git to use https
         run: |
             git config --global credential.helper store
-            echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
-            git config --global url."https://${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
+            echo "https://${{ secrets.GH_PAT }}@github.com" > ~/.git-credentials
+            git config --global url."https://${{ secrets.GH_PAT }}@github.com".insteadOf ssh://github.com
 
       - name: Pull private dependencies
         run: |
