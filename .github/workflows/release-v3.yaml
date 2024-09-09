@@ -53,6 +53,12 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Setup git to use https
+        run: |
+            git config --global credential.helper store
+            echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
+            git config --global url."https://${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
+
       - name: Set up Python environment
         uses: actions/setup-python@v4
         with:
@@ -74,12 +80,6 @@ jobs:
 
       - name: Verify the integrity of provenance attestations and registry signatures for installed dependencies
         run: npm audit signatures
-
-      - name: Setup git to use https
-        run: |
-            git config --global credential.helper store
-            echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
-            git config --global url."https://${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
 
       - name: Semantic release
         id: semantic
