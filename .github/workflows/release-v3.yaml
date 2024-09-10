@@ -46,9 +46,6 @@ jobs:
           app_id: ${{ secrets.app_id }}
           private_key: ${{ secrets.app_private_key }}
 
-      - name: Install git
-        run: sudo apt update && sudo apt install -y git
-
       - name: Checkout
         uses: actions/checkout@v4
         with:
@@ -59,7 +56,7 @@ jobs:
         run: |
             git config --global credential.helper store
             echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
-            git config --global url."https://${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
+            git config --global url."https://${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://git@github.com
 
       - name: Pull private dependencies
         run: |
