@@ -64,12 +64,23 @@ jobs:
             git config --global url."https://${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
             cat ~/.git-credentials
 
+      - name: Setup toolchain
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+
       - name: Pull private dependencies
         run: |
           export CARGO_HOME=$(pwd)/.cargo
           cargo fetch
-        env:
-          CARGO_NET_GIT_FETCH_WITH_CLI: true
+        #env:
+        #  CARGO_NET_GIT_FETCH_WITH_CLI: true
+
+      - name: Pull private dependencies
+        if: "${{ inputs.image_name == 'propeller-searcher' }}"
+        run: |
+          export CARGO_HOME=$(pwd)/.cargo
+          cargo fetch
 
       - name: Set up Python environment
         uses: actions/setup-python@v4
