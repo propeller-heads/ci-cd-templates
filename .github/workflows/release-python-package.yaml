@@ -175,6 +175,7 @@ jobs:
           echo "https://${{ secrets.GH_TOKEN }}@github.com" > ~/.git-credentials
           git config --global url."https://${{ secrets.GH_TOKEN }}@github.com".insteadOf ssh://github.com
           
+          cd ${{ inputs.package_root }}
           python -m maturin build --release
 
       - name: Build wheel without maturin
