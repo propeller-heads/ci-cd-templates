@@ -72,7 +72,9 @@ jobs:
       - name: Pull private dependencies
         run: |
           export CARGO_HOME=$(pwd)/.cargo
-          RUST_LOG=git2=trace cargo fetch
+          cargo fetch
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
 
       - name: Set up Python environment
         uses: actions/setup-python@v4
