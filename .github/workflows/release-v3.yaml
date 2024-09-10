@@ -41,22 +41,26 @@ jobs:
     steps:
       - name: Generate a token
         id: generate-token
-        uses: getsentry/action-github-app-token@v2
+        uses: getsentry/action-github-app-token@v3.1
         with:
           app_id: ${{ secrets.app_id }}
           private_key: ${{ secrets.app_private_key }}
 
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Checkout
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 0
           persist-credentials: false
+          repository: propeller-heads/tycho-indexer
+          path: /tmp
 
       - name: Setup git to use https
         run: |
             git config --global credential.helper store
             echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
-            git config --global url."https://${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://git@github.com
+            git config --global url."https://${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
 
       - name: Pull private dependencies
         run: |
