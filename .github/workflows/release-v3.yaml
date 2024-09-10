@@ -61,7 +61,7 @@ jobs:
         run: |
             git config --global credential.helper store
             echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
-            #git config --global url."https://${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
+            git config --global url."https://${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
             cat ~/.git-credentials
 
       - name: Pull private dependencies
