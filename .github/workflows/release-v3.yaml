@@ -73,14 +73,6 @@ jobs:
         run: |
           export CARGO_HOME=$(pwd)/.cargo
           cargo fetch
-        env:
-          CARGO_NET_GIT_FETCH_WITH_CLI: true
-
-      - name: Pull private dependencies
-        if: "${{ inputs.image_name == 'propeller-searcher' }}"
-        run: |
-          export CARGO_HOME=$(pwd)/.cargo
-          cargo fetch
 
       - name: Set up Python environment
         uses: actions/setup-python@v4
