@@ -65,6 +65,8 @@ jobs:
         run: |
           export CARGO_HOME=$(pwd)/.cargo
           cargo fetch
+        env:
+          CARGO_NET_GIT_FETCH_WITH_CLI: true
 
       - name: Set up Python environment
         uses: actions/setup-python@v4
