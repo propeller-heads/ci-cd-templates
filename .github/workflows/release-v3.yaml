@@ -54,7 +54,7 @@ jobs:
         with:
           persist-credentials: false
           repository: propeller-heads/tycho-indexer
-          path: /tmp
+          path: "./tmp"
 
       - name: Setup git to use https
         run: |
