@@ -53,6 +53,13 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Setup git to use https
+        run: |
+            git config --global credential.helper store
+            echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
+            git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
+            cat ~/.git-credentials
+
       - name: Set up Python environment
         uses: actions/setup-python@v4
         with:
