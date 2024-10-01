@@ -45,9 +45,6 @@ on:
         required: false
         type: string
         description: Build args
-      tycho_client_version_default:
-        type: string
-        required: false
       tycho_client_version:
         type: string
         required: false
@@ -80,14 +77,17 @@ jobs:
             # Ensure the manifest file is empty or create it if it doesn't exist
             MANIFEST_FILE="manifest.txt"
             echo -n "" > "$MANIFEST_FILE"
+
             # Determine the tycho_client_version to use
             if [ -z "${{ inputs.tycho_client_version }}" ]; then
-              echo "Using default tycho_client_version: ${{ inputs.tycho_client_version_default }}"
-              FILE=${{ inputs.tycho_client_version_default }}
+              echo "Fetching the latest version from S3."
+              # Get the latest Tycho client version from S3, filtering out 'pre' releases
+              FILE=$(aws s3 ls "s3://repo.propellerheads/tycho-client/tycho-client-${ARCH}" | grep -v 'pre' | sort -k1,2 | tail -n1 | awk '{print $4}')
             else
               echo "Using provided tycho_client_version: ${{ inputs.tycho_client_version }}"
               FILE=${{ inputs.tycho_client_version }}
             fi
+
             echo "Tycho-client binary: $FILE"
             aws s3 cp s3://repo.propellerheads/tycho-client/$FILE ./
             tar -xzf $FILE
