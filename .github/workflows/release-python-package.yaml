@@ -58,8 +58,10 @@ on:
         default: true
         type: boolean
     secrets:
-      GH_TOKEN:
-        required: false
+      app_id:
+        required: true
+      app_private_key:
+        required: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -68,6 +70,16 @@ jobs:
   build_and_publish_package:
     runs-on: "${{ inputs.runs_on }}"
     steps:
+      - name: Generate a token
+        id: generate-token
+        uses: getsentry/action-github-app-token@v2
+        with:
+          app_id: ${{ secrets.app_id }}
+          private_key: ${{ secrets.app_private_key }}
+
+      - name: Install git
+        run: sudo apt update && sudo apt install -y git
+
       - name: Check out Repo
         uses: actions/checkout@v4
         with:
@@ -137,8 +149,8 @@ jobs:
           run: |
             # allows resolving private git packages
             git config --global credential.helper store
-            echo "https://${{ secrets.GH_TOKEN }}@github.com" > ~/.git-credentials
-            git config --global url."https://${{ secrets.GH_TOKEN }}@github.com".insteadOf ssh://github.com
+            echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
+            git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
             
             cd ${{ inputs.package_root }}
             /opt/python/cp39-cp39/bin/python -m maturin build --release --compatibility manylinux2014 -i /opt/python/cp39-cp39/bin/python
@@ -172,8 +184,8 @@ jobs:
           pip install maturin
           
           git config --global credential.helper store
-          echo "https://${{ secrets.GH_TOKEN }}@github.com" > ~/.git-credentials
-          git config --global url."https://${{ secrets.GH_TOKEN }}@github.com".insteadOf ssh://github.com
+          echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
+          git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
           
           cd ${{ inputs.package_root }}
           python -m maturin build --release
