@@ -115,6 +115,7 @@ jobs:
           echo PIP_INDEX_URL="https://aws:${CODEARTIFACT_AUTH_TOKEN}@propeller-827659017777.d.codeartifact.eu-central-1.amazonaws.com/pypi/protosim/simple/" >> $GITHUB_ENV
 
       - name: Setup git to use https
+        if: "${{ inputs.image_name == 'propeller-searcher' }}"
         run: |
             git config --global credential.helper store
             echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
