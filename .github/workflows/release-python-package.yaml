@@ -57,6 +57,13 @@ on:
         required: false
         default: true
         type: boolean
+      py_version:
+        description: | 
+          Which python version to use for the build (see supported versions here 
+          https://github.com/pypa/manylinux).
+        required: false
+        default: "3.9"
+        type: string
     secrets:
       app_id:
         required: true
@@ -110,7 +117,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v4
         with:
-          python-version: '3.x'
+          python-version: ${{ inputs.py_version }}
 
       - name: Install python package utils
         run: |
@@ -128,10 +135,10 @@ jobs:
           
           ENV PATH="/root/.cargo/bin:/opt/rh/devtoolset-10/root/usr/bin:$PATH"
           
-          RUN /opt/python/cp39-cp39/bin/python -m pip install maturin
+          RUN python$${{ inputs.py_version }} -m pip install maturin
           
           WORKDIR /build
-          CMD /opt/python/cp39-cp39/bin/python -m maturin build --release --compatibility manylinux2014 -i /opt/python/cp39-cp39/bin/python
+          CMD python$${{ inputs.py_version }} -m maturin build --release --compatibility manylinux2014 -i $(realpath /usr/local/bin/python$${{ inputs.py_version }})
           EOF
           
           cat Dockerfile.wheel
@@ -158,7 +165,7 @@ jobs:
             git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
             
             cd ${{ inputs.package_root }}
-            /opt/python/cp39-cp39/bin/python -m maturin build --release --compatibility manylinux2014 -i /opt/python/cp39-cp39/bin/python
+            python$${{ inputs.py_version }} -m maturin build --release --compatibility manylinux2014 -i $(realpath /usr/local/bin/python$${{ inputs.py_version }})
       
 
       - name: Set up Homebrew | Build wheel for macOS (with maturin)
