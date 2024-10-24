@@ -129,16 +129,16 @@ jobs:
           cat <<EOF > Dockerfile.wheel
           FROM quay.io/pypa/manylinux2014_x86_64
           
-          RUN yum install -y $${{ inputs.yum_packages }} && yum clean all
+          RUN yum install -y ${{ inputs.yum_packages }} && yum clean all
           
           RUN curl --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain=stable -y
           
           ENV PATH="/root/.cargo/bin:/opt/rh/devtoolset-10/root/usr/bin:$PATH"
           
-          RUN python$${{ inputs.py_version }} -m pip install maturin
+          RUN python${{ inputs.py_version }} -m pip install maturin
           
           WORKDIR /build
-          CMD python$${{ inputs.py_version }} -m maturin build --release --compatibility manylinux2014 -i $(realpath /usr/local/bin/python$${{ inputs.py_version }})
+          CMD python${{ inputs.py_version }} -m maturin build --release --compatibility manylinux2014 -i $(realpath /usr/local/bin/python${{ inputs.py_version }})
           EOF
           
           cat Dockerfile.wheel
@@ -165,7 +165,7 @@ jobs:
             git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
             
             cd ${{ inputs.package_root }}
-            python$${{ inputs.py_version }} -m maturin build --release --compatibility manylinux2014 -i $(realpath /usr/local/bin/python$${{ inputs.py_version }})
+            python${{ inputs.py_version }} -m maturin build --release --compatibility manylinux2014 -i $(realpath /usr/local/bin/python${{ inputs.py_version }})
       
 
       - name: Set up Homebrew | Build wheel for macOS (with maturin)
