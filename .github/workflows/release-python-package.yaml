@@ -203,7 +203,7 @@ jobs:
         if: ${{ inputs.push }}
         shell: bash
         run: |
-          aws codeartifact login --tool twine --domain ${{ inputs.domain }} --domain-owner ${{ secrets.domain_owner }} --repository ${{ secrets.repository }}
+          aws codeartifact login --tool twine --domain ${{ inputs.domain }} --domain-owner ${{ secrets.domain_owner }} --repository ${{ inputs.repository }}
 
           if [ "${{ inputs.use_maturin }}" = "true" ]; then
             twine upload --repository codeartifact ./target/wheels/*.whl
