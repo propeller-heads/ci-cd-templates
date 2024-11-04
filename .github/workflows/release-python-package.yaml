@@ -15,7 +15,7 @@ on:
       aws_role_to_assume:
         description: 'AWS role to assume'
         required: false
-        default: "arn:aws:iam::827659017777:role/github-actions"
+        default: "arn:aws:iam::111111222222:role/github-actions"
         type: string
       aws_region:
         description: 'AWS region'
@@ -35,7 +35,7 @@ on:
       domain_owner:
         description: 'AWS CodeArtifact domain owner'
         required: false
-        default: "827659017777"
+        default: "111111222222"
         type: string
       yum_packages:
         description: "Packages to install using YUM (docker linux builds)"

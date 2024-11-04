@@ -16,7 +16,7 @@ on:
       role_to_assume:
         required: false
         type: string
-        default: arn:aws:iam::827659017777:role/github-actions
+        default: arn:aws:iam::111111222222:role/github-actions
         description: ARN role to assume
       aws_region:
         required: false
@@ -39,8 +39,13 @@ on:
       repository_url:
         required: false
         type: string
-        default: 827659017777.dkr.ecr.eu-central-1.amazonaws.com
+        default: 111111222222.dkr.ecr.eu-central-1.amazonaws.com
         description: Repository URL
+      domain_owner:
+        description: 'AWS CodeArtifact domain owner'
+        required: false
+        default: "111111222222"
+        type: string
       build_args:
         required: false
         type: string
@@ -111,8 +116,8 @@ jobs:
       - name: Login in pip codeartifact
         if: "${{ inputs.image_name == 'defibot' || inputs.image_name == 'pyth' }}"
         run: |
-          CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain propeller --domain-owner 827659017777 --query authorizationToken --output text --duration 1800)
-          echo PIP_INDEX_URL="https://aws:${CODEARTIFACT_AUTH_TOKEN}@propeller-827659017777.d.codeartifact.eu-central-1.amazonaws.com/pypi/protosim/simple/" >> $GITHUB_ENV
+          CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain propeller --domain-owner ${{ inputs.domain_owner }} --query authorizationToken --output text --duration 1800)
+          echo PIP_INDEX_URL="https://aws:${CODEARTIFACT_AUTH_TOKEN}@propeller-${{ inputs.domain_owner }}.d.codeartifact.eu-central-1.amazonaws.com/pypi/protosim/simple/" >> $GITHUB_ENV
 
       - name: Setup git to use https
         if: "${{ inputs.image_name == 'propeller-searcher' }}"

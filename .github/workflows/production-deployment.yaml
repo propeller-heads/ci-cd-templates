@@ -16,7 +16,7 @@ on:
       role_to_assume:
         required: false
         type: string
-        default: arn:aws:iam::827659017777:role/github-actions
+        default: arn:aws:iam::111111222222:role/github-actions
         description: ARN role to assume
       aws_region:
         required: false
