@@ -60,7 +60,7 @@ jobs:
             git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
 
       - name: Set up Python environment
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ inputs.python_version }}
 
