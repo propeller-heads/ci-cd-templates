@@ -12,30 +12,10 @@ on:
         type: string
         default: ubuntu-latest
         description: Runner tag for workflow
-      aws_role_to_assume:
-        description: 'AWS role to assume'
-        required: false
-        default: "arn:aws:iam::111111222222:role/github-actions"
-        type: string
-      aws_region:
-        description: 'AWS region'
-        required: false
-        default: "eu-central-1"
-        type: string
-      repository:
-        description: 'Repository name'
-        required: false
-        default: "protosim"
-        type: string
       domain:
         description: 'AWS CodeArtifact domain'
         required: false
         default: "propeller"
-        type: string
-      domain_owner:
-        description: 'AWS CodeArtifact domain owner'
-        required: false
-        default: "111111222222"
         type: string
       yum_packages:
         description: "Packages to install using YUM (docker linux builds)"
@@ -69,6 +49,14 @@ on:
         required: true
       app_private_key:
         required: true
+      role_to_assume:
+        required: true
+      aws_region:
+        required: true
+      repository:
+        required: true
+      domain_owner:
+        required: true
 
 env:
   CARGO_TERM_COLOR: always
@@ -100,9 +88,9 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ inputs.aws_role_to_assume }}
+          role-to-assume: ${{ secrets.role_to_assume }}
           audience: sts.amazonaws.com
-          aws-region: ${{ inputs.aws_region }}
+          aws-region: ${{ secrets.aws_region }}
 
       - name: Install AWS CLI
         uses: unfor19/install-aws-cli-action@v1
@@ -212,7 +200,7 @@ jobs:
         if: ${{ inputs.push }}
         shell: bash
         run: |
-          aws codeartifact login --tool twine --domain ${{ inputs.domain }} --domain-owner ${{ inputs.domain_owner }} --repository ${{ inputs.repository }}
+          aws codeartifact login --tool twine --domain ${{ inputs.domain }} --domain-owner ${{ secrets.domain_owner }} --repository ${{ secrets.repository }}
 
           if [ "${{ inputs.use_maturin }}" = "true" ]; then
             twine upload --repository codeartifact ./target/wheels/*.whl

@@ -13,21 +13,6 @@ on:
         type: number
         default: 30
         description: Timeout for workflow
-      role_to_assume:
-        required: false
-        type: string
-        default: arn:aws:iam::111111222222:role/github-actions
-        description: ARN role to assume
-      aws_region:
-        required: false
-        type: string
-        default: eu-central-1
-        description: Default AWS region
-      eks_cluster_name:
-        required: false
-        type: string
-        default: dr-eks-prod
-        description: EKS cluster name
       slack_webhook_url:
         required: true
         type: string
@@ -40,6 +25,12 @@ on:
       app_id:
         required: true
       app_private_key:
+        required: true
+      role_to_assume:
+        required: true
+      aws_region:
+        required: true
+      eks_cluster_name:
         required: true
 
 env:
@@ -75,12 +66,12 @@ jobs:
       - name: Assume role
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: "${{ inputs.role_to_assume }}"
+          role-to-assume: "${{ secrets.role_to_assume }}"
           audience: sts.amazonaws.com
-          aws-region: "${{ inputs.aws_region }}"
+          aws-region: "${{ secrets.aws_region }}"
 
       - name: Setup kubeconfig
-        run: aws eks update-kubeconfig --name "${{ inputs.eks_cluster_name }}" --region "${{ inputs.aws_region }}"
+        run: aws eks update-kubeconfig --name "${{ secrets.eks_cluster_name }}" --region "${{ secrets.aws_region }}"
 
       - name: Install helmwave
         uses: helmwave/setup-action@v0.3.0
