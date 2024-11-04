@@ -12,6 +12,11 @@ on:
         type: string
         default: ubuntu-latest
         description: Runner tag for workflow
+      repository:
+        description: 'Repository name'
+        required: false
+        default: "protosim"
+        type: string
       domain:
         description: 'AWS CodeArtifact domain'
         required: false
@@ -52,8 +57,6 @@ on:
       role_to_assume:
         required: true
       aws_region:
-        required: true
-      repository:
         required: true
       domain_owner:
         required: true
