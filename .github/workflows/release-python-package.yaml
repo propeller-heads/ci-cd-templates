@@ -191,7 +191,7 @@ jobs:
           git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
           
           cd ${{ inputs.package_root }}
-          python${{ inputs.py_version }} -m maturin build --release
+          python${{ inputs.py_version }} -m maturin build --release --interpreter $(which python${{ inputs.py_version }})
 
       - name: Build wheel without maturin
         if: ${{ !inputs.use_maturin }}
