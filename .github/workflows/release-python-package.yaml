@@ -112,7 +112,7 @@ jobs:
 
       - name: Install python package utils
         run: |
-          python -m pip install --upgrade pip build twine
+          python${{ inputs.py_version }} -m pip install --upgrade pip build twine
 
       - name: Write Dockerfile | Build wheel for Linux (with maturin)
         if: ${{ runner.os == 'Linux' && inputs.use_maturin }}
@@ -184,20 +184,20 @@ jobs:
           else
             echo "No packages to install."
           fi
-          pip install maturin
+          python${{ inputs.py_version }} -m pip install maturin
           
           git config --global credential.helper store
           echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
           git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
           
           cd ${{ inputs.package_root }}
-          python -m maturin build --release
+          python${{ inputs.py_version }} -m maturin build --release
 
       - name: Build wheel without maturin
         if: ${{ !inputs.use_maturin }}
         run: |
           cd ${{ inputs.package_root }}
-          python -m build
+          python${{ inputs.py_version }} -m build
 
       - name: Publish Python distribution to AWS CodeArtifact
         if: ${{ inputs.push }}
