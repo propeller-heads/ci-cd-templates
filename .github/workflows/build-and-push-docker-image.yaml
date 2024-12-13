@@ -36,6 +36,10 @@ on:
       tycho_client_version:
         type: string
         required: false
+      build_tool:
+        required: false
+        type: string
+        default: kaniko
     secrets:
       app_id:
         required: true
@@ -126,7 +130,8 @@ jobs:
           export CARGO_HOME=$(pwd)/.cargo
           cargo fetch
 
-      - name: Build and push docker image
+      - name: Build and push docker image with kaniko
+        if: ${{ inputs.build_tool == 'kaniko' }}
         uses: int128/kaniko-action@v1
         with:
           push: true
@@ -135,3 +140,12 @@ jobs:
           cache-repository: "${{ secrets.repository_url }}/${{ inputs.image_name }}"
           build-args: PIP_INDEX_URL=${{ env.PIP_INDEX_URL }}
           #verbosity: DEBUG
+
+      - name: Build and push docker image with docker
+        if : ${{ inputs.build_tool == 'docker' }}
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: "${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}"
+          build-args: PIP_INDEX_URL=${{ env.PIP_INDEX_URL }}
