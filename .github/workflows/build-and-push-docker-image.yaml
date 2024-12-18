@@ -41,18 +41,18 @@ on:
         type: string
         default: kaniko
     secrets:
-      #app_id:
-      #  required: true
-      #app_private_key:
-      #  required: true
+      app_id:
+        required: true
+      app_private_key:
+        required: true
       role_to_assume:
         required: true
       aws_region:
         required: true
       repository_url:
         required: true
-          #domain_owner:
-          #  required: true
+      domain_owner:
+        required: true
       aws_old_account_id:
         required: true
       aws_new_account_id:
@@ -65,12 +65,12 @@ jobs:
     runs-on: "${{ inputs.runs_on }}"
     timeout-minutes: "${{ inputs.timeout_minutes }}"
     steps:
-      #- name: Generate a token
-      #  id: generate-token
-      #  uses: getsentry/action-github-app-token@v2
-      #  with:
-      #    app_id: ${{ secrets.app_id }}
-      #    private_key: ${{ secrets.app_private_key }}
+      - name: Generate a token
+        id: generate-token
+        uses: getsentry/action-github-app-token@v2
+        with:
+          app_id: ${{ secrets.app_id }}
+          private_key: ${{ secrets.app_private_key }}
 
       - name: Install git
         run: sudo apt update && sudo apt install -y git
@@ -92,52 +92,52 @@ jobs:
           registries: "${{ secrets.aws_old_account_id }},${{ secrets.aws_new_account_id }}"
 
 
-          #- name: Download Tycho-client from S3
-          #  if: "${{ inputs.image_name == 'defibot' }}"
-          #  run: |
-          #      # Ensure the manifest file is empty or create it if it doesn't exist
-          #      MANIFEST_FILE="manifest.txt"
-          #      echo -n "" > "$MANIFEST_FILE"
-          #      # Determine the tycho_client_version to use
-          #      if [ -z "${{ inputs.tycho_client_version }}" ]; then
-          #        echo "Using default tycho_client_version: ${{ inputs.tycho_client_version_default }}"
-          #        FILE=${{ inputs.tycho_client_version_default }}
-          #      else
-          #        echo "Using provided tycho_client_version: ${{ inputs.tycho_client_version }}"
-          #        FILE=${{ inputs.tycho_client_version }}
-          #      fi
-          #      echo "Tycho-client binary: $FILE"
-          #      aws s3 cp s3://repo.propellerheads/tycho-client/$FILE ./
-          #      tar -xzf $FILE
-          #      EXTRACTED_NAME=$(tar -tzf $FILE | grep tycho-client | head -n 1)
-          #      mv $EXTRACTED_NAME ./defibot/tycho/bins/tycho-client
-          #      echo "$FILE" > "$MANIFEST_FILE"
-          #      rm $FILE
+      - name: Download Tycho-client from S3
+        if: "${{ inputs.image_name == 'defibot' }}"
+        run: |
+            # Ensure the manifest file is empty or create it if it doesn't exist
+            MANIFEST_FILE="manifest.txt"
+            echo -n "" > "$MANIFEST_FILE"
+            # Determine the tycho_client_version to use
+            if [ -z "${{ inputs.tycho_client_version }}" ]; then
+              echo "Using default tycho_client_version: ${{ inputs.tycho_client_version_default }}"
+              FILE=${{ inputs.tycho_client_version_default }}
+            else
+              echo "Using provided tycho_client_version: ${{ inputs.tycho_client_version }}"
+              FILE=${{ inputs.tycho_client_version }}
+            fi
+            echo "Tycho-client binary: $FILE"
+            aws s3 cp s3://repo.propellerheads/tycho-client/$FILE ./
+            tar -xzf $FILE
+            EXTRACTED_NAME=$(tar -tzf $FILE | grep tycho-client | head -n 1)
+            mv $EXTRACTED_NAME ./defibot/tycho/bins/tycho-client
+            echo "$FILE" > "$MANIFEST_FILE"
+            rm $FILE
 
-          #- name: Login in pip codeartifact
-          #  if: "${{ inputs.image_name == 'defibot' || inputs.image_name == 'pyth' }}"
-          #  run: |
-          #    CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain propeller --domain-owner ${{ secrets.domain_owner }} --query authorizationToken --output text --duration 1800)
-          #    echo PIP_INDEX_URL="https://aws:${CODEARTIFACT_AUTH_TOKEN}@propeller-${{ secrets.domain_owner }}.d.codeartifact.eu-central-1.amazonaws.com/pypi/protosim/simple/" >> $GITHUB_ENV
+      - name: Login in pip codeartifact
+        if: "${{ inputs.image_name == 'defibot' || inputs.image_name == 'pyth' }}"
+        run: |
+          CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain propeller --domain-owner ${{ secrets.domain_owner }} --query authorizationToken --output text --duration 1800)
+          echo PIP_INDEX_URL="https://aws:${CODEARTIFACT_AUTH_TOKEN}@propeller-${{ secrets.domain_owner }}.d.codeartifact.eu-central-1.amazonaws.com/pypi/protosim/simple/" >> $GITHUB_ENV
 
-          #- name: Setup git to use https
-          #  if: "${{ inputs.image_name == 'propeller-searcher' }}"
-          #  run: |
-          #      git config --global credential.helper store
-          #      echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
-          #      git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
+      - name: Setup git to use https
+        if: "${{ inputs.image_name == 'propeller-searcher' }}"
+        run: |
+            git config --global credential.helper store
+            echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
+            git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
 
-          #- name: Setup toolchain
-          #  if: "${{ inputs.image_name == 'propeller-searcher' }}"
-          #  uses: dtolnay/rust-toolchain@v1
-          #  with:
-          #    toolchain: stable
+      - name: Setup toolchain
+        if: "${{ inputs.image_name == 'propeller-searcher' }}"
+        uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
 
-          #- name: Pull private dependencies
-          #  if: "${{ inputs.image_name == 'propeller-searcher' }}"
-          #  run: |
-          #    export CARGO_HOME=$(pwd)/.cargo
-          #    cargo fetch
+      - name: Pull private dependencies
+        if: "${{ inputs.image_name == 'propeller-searcher' }}"
+        run: |
+          export CARGO_HOME=$(pwd)/.cargo
+          cargo fetch
 
       - name: Build and push docker image with kaniko
         if: ${{ inputs.build_tool == 'kaniko' }}
