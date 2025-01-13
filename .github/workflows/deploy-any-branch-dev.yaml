@@ -24,7 +24,12 @@ on:
       app_name:
         required: false
         type: string
-        description: Application name
+        description: |
+          Application name. This is the release name in versions.yml in helm-configuration repo.
+          If your release is named the same as your docker image, there's no need to set app_name
+          (if you don't set app_name, image_name will be used as release name).
+          But if your release name is different (e.g. you use the same image for multiple releases),
+          then you must set app_name.
       helm_repo_branch:
         required: false
         type: string
@@ -90,7 +95,7 @@ jobs:
 
       - name: Replace release version
         run: |
-          yq eval '.${{ inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/dev/versions.yml
+          yq eval '.${{ inputs.app_name || inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/dev/versions.yml
           cat helmwave/dev/versions.yml
 
       - name: Deploy app uses helmwave
