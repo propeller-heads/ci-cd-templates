@@ -157,6 +157,13 @@ jobs:
           export CARGO_HOME=$(pwd)/.cargo
           cargo fetch
 
+      - name: Get Speedex binary
+        if: "${{ inputs.image_name == 'turbine-rust' && steps.check-image.outputs.skip_remaining_steps != 'true' }}"
+        run: |
+          mkdir -p src/clearing_algorithm/speedex/bin
+          aws s3 cp s3://propeller-speedex/propeller_speedex_amd src/clearing_algorithm/speedex/bin/propeller_speedex
+          chmod +x src/clearing_algorithm/speedex/bin/propeller_speedex
+
       - name: Build and push docker image with kaniko
         if: ${{ inputs.build_tool == 'kaniko' && steps.check-image.outputs.skip_remaining_steps != 'true' }}
         uses: int128/kaniko-action@v1
