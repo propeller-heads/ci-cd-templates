@@ -94,74 +94,98 @@ jobs:
         with:
           registries: "${{ secrets.aws_old_account_id }},${{ secrets.aws_new_account_id }}"
 
+      - name: Check if image already exists
+        id: check-image
+        shell: bash
+        run: |
+          IMAGE="${{ inputs.image_name }}:${{ inputs.image_tag }}"
+
+          # Try to pull the image from the new repository
+          if aws ecr describe-images --registry-id ${{ secrets.aws_new_account_id }} --repository-name ${{ inputs.image_name }} --image-ids imageTag=${{ inputs.image_tag }} 2>/dev/null; then
+            echo "Image $IMAGE already exists in the repository"
+            echo "skip_remaining_steps=true" >> $GITHUB_OUTPUT
+            exit 0
+          else
+            echo "Image $IMAGE not found, proceeding with build"
+            echo "skip_remaining_steps=false" >> $GITHUB_OUTPUT
+          fi
 
       - name: Download Tycho-client from S3
-        if: "${{ inputs.image_name == 'defibot' }}"
+        if: "${{ inputs.image_name == 'defibot' && steps.check-image.outputs.skip_remaining_steps != 'true' }}"
         run: |
-            # Ensure the manifest file is empty or create it if it doesn't exist
-            MANIFEST_FILE="manifest.txt"
-            echo -n "" > "$MANIFEST_FILE"
-            # Determine the tycho_client_version to use
-            if [ -z "${{ inputs.tycho_client_version }}" ]; then
-              echo "Using default tycho_client_version: ${{ inputs.tycho_client_version_default }}"
-              FILE=${{ inputs.tycho_client_version_default }}
-            else
-              echo "Using provided tycho_client_version: ${{ inputs.tycho_client_version }}"
-              FILE=${{ inputs.tycho_client_version }}
-            fi
-            echo "Tycho-client binary: $FILE"
-            aws s3 cp s3://repo.propellerheads/tycho-client/$FILE ./
-            tar -xzf $FILE
-            EXTRACTED_NAME=$(tar -tzf $FILE | grep tycho-client | head -n 1)
-            mv $EXTRACTED_NAME ./defibot/tycho/bins/tycho-client
-            echo "$FILE" > "$MANIFEST_FILE"
-            rm $FILE
+          # Ensure the manifest file is empty or create it if it doesn't exist
+          MANIFEST_FILE="manifest.txt"
+          echo -n "" > "$MANIFEST_FILE"
+          # Determine the tycho_client_version to use
+          if [ -z "${{ inputs.tycho_client_version }}" ]; then
+            echo "Using default tycho_client_version: ${{ inputs.tycho_client_version_default }}"
+            FILE=${{ inputs.tycho_client_version_default }}
+          else
+            echo "Using provided tycho_client_version: ${{ inputs.tycho_client_version }}"
+            FILE=${{ inputs.tycho_client_version }}
+          fi
+          echo "Tycho-client binary: $FILE"
+          aws s3 cp s3://repo.propellerheads/tycho-client/$FILE ./
+          tar -xzf $FILE
+          EXTRACTED_NAME=$(tar -tzf $FILE | grep tycho-client | head -n 1)
+          mv $EXTRACTED_NAME ./defibot/tycho/bins/tycho-client
+          echo "$FILE" > "$MANIFEST_FILE"
+          rm $FILE
 
       - name: Login in pip codeartifact
-        if: "${{ inputs.image_name == 'defibot' || inputs.image_name == 'pyth' }}"
+        if: "${{ (inputs.image_name == 'defibot' || inputs.image_name == 'pyth') && steps.check-image.outputs.skip_remaining_steps != 'true' }}"
         run: |
           CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain propeller --domain-owner ${{ secrets.domain_owner }} --query authorizationToken --output text --duration 1800)
           echo PIP_INDEX_URL="https://aws:${CODEARTIFACT_AUTH_TOKEN}@propeller-${{ secrets.domain_owner }}.d.codeartifact.eu-central-1.amazonaws.com/pypi/protosim/simple/" >> $GITHUB_ENV
 
       - name: Setup git to use https
-        if: "${{ inputs.image_name == 'propeller-searcher' }}"
+        if: "${{ inputs.image_name == 'propeller-searcher' && steps.check-image.outputs.skip_remaining_steps != 'true' }}"
         run: |
-            git config --global credential.helper store
-            echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
-            git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
+          git config --global credential.helper store
+          echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
+          git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
 
       - name: Setup toolchain
-        if: "${{ inputs.image_name == 'propeller-searcher' }}"
+        if: "${{ inputs.image_name == 'propeller-searcher' && steps.check-image.outputs.skip_remaining_steps != 'true' }}"
         uses: dtolnay/rust-toolchain@v1
         with:
           toolchain: stable
 
       - name: Pull private dependencies
-        if: "${{ inputs.image_name == 'propeller-searcher' }}"
+        if: "${{ inputs.image_name == 'propeller-searcher' && steps.check-image.outputs.skip_remaining_steps != 'true' }}"
         run: |
           export CARGO_HOME=$(pwd)/.cargo
           cargo fetch
 
       - name: Build and push docker image with kaniko
-        if: ${{ inputs.build_tool == 'kaniko' }}
+        if: ${{ inputs.build_tool == 'kaniko' && steps.check-image.outputs.skip_remaining_steps != 'true' }}
         uses: int128/kaniko-action@v1
         with:
           push: true
           tags: |
-              ${{ secrets.new_repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
-              ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
+            ${{ secrets.new_repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
+            ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
           cache: "${{ inputs.cache }}"
           cache-repository: "${{ secrets.repository_url }}/${{ inputs.image_name }}"
           build-args: PIP_INDEX_URL=${{ env.PIP_INDEX_URL }}
           #verbosity: DEBUG
 
       - name: Build and push docker image with docker
-        if : ${{ inputs.build_tool == 'docker' }}
+        if: ${{ inputs.build_tool == 'docker' && steps.check-image.outputs.skip_remaining_steps != 'true' }}
         uses: docker/build-push-action@v6
         with:
           context: .
           push: true
           tags: |
-              ${{ secrets.new_repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
-              ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
+            ${{ secrets.new_repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
+            ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
           build-args: PIP_INDEX_URL=${{ env.PIP_INDEX_URL }}
+
+      - name: Add image info to workflow summary
+        run: |
+          if [[ "${{ steps.check-image.outputs.skip_remaining_steps }}" == "true" ]]; then
+            echo "### Didn't push Docker image because it is already present in the repo" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Built and pushed Docker image" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "\`${{ inputs.image_name }}:${{ inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
