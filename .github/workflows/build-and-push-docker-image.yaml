@@ -98,17 +98,15 @@ jobs:
         id: check-image
         shell: bash
         run: |
-          IMAGE_TAG="${{ inputs.image_name }}:${{ inputs.image_tag }}"
-          OLD_REPO="${{ secrets.repository_url }}"
-          NEW_REPO="${{ secrets.new_repository_url }}"
+          IMAGE="${{ inputs.image_name }}:${{ inputs.image_tag }}"
 
           # Try to pull the image from the new repository
-          if aws ecr describe-images --repository-name $NEW_REPO --image-ids imageTag=${{ inputs.image_tag }} 2>/dev/null; then
-            echo "Image $IMAGE_TAG already exists in the repository"
+          if aws ecr describe-images --registry-id ${{ secrets.aws_new_account_id }} --repository-name ${{ inputs.image_name }} --image-ids imageTag=${{ inputs.image_tag }} 2>/dev/null; then
+            echo "Image $IMAGE already exists in the repository"
             echo "skip_remaining_steps=true" >> $GITHUB_OUTPUT
             exit 0
           else
-            echo "Image $IMAGE_TAG not found, proceeding with build"
+            echo "Image $IMAGE not found, proceeding with build"
             echo "skip_remaining_steps=false" >> $GITHUB_OUTPUT
           fi
 
