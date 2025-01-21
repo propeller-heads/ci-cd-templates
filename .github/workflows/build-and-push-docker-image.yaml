@@ -93,7 +93,7 @@ jobs:
           IMAGE="${{ inputs.image_name }}:${{ inputs.image_tag }}"
 
           # Try to pull the image from the new repository
-          if aws ecr describe-images --registry-id ${{ secrets.aws_new_account_id }} --repository-name ${{ inputs.image_name }} --image-ids imageTag=${{ inputs.image_tag }} 2>/dev/null; then
+          if aws ecr describe-images --registry-id ${{ secrets.domain_owner }} --repository-name ${{ inputs.image_name }} --image-ids imageTag=${{ inputs.image_tag }} 2>/dev/null; then
             echo "Image $IMAGE already exists in the repository"
             echo "skip_remaining_steps=true" >> $GITHUB_OUTPUT
             exit 0
