@@ -117,7 +117,7 @@ jobs:
             FILE=${{ inputs.tycho_client_version }}
           fi
           echo "Tycho-client binary: $FILE"
-          aws s3 cp s3://repo.propellerheads/tycho-client/$FILE ./
+          aws s3 cp s3://repo.propellerheads-propellerheads/tycho-client/$FILE ./
           tar -xzf $FILE
           EXTRACTED_NAME=$(tar -tzf $FILE | grep tycho-client | head -n 1)
           mv $EXTRACTED_NAME ./defibot/tycho/bins/tycho-client
