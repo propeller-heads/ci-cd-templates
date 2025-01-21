@@ -53,12 +53,6 @@ on:
         required: true
       domain_owner:
         required: true
-      aws_old_account_id:
-        required: true
-      aws_new_account_id:
-        required: true
-      new_repository_url:
-        required: true
 
 jobs:
   build-and-push:
@@ -91,8 +85,6 @@ jobs:
       - name: Login in ECR
         uses: aws-actions/amazon-ecr-login@v2
         id: ecr
-        with:
-          registries: "${{ secrets.aws_old_account_id }},${{ secrets.aws_new_account_id }}"
 
       - name: Check if image already exists
         id: check-image
@@ -169,9 +161,7 @@ jobs:
         uses: int128/kaniko-action@v1
         with:
           push: true
-          tags: |
-            ${{ secrets.new_repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
-            ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
+          tags: ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
           cache: "${{ inputs.cache }}"
           cache-repository: "${{ secrets.repository_url }}/${{ inputs.image_name }}"
           build-args: PIP_INDEX_URL=${{ env.PIP_INDEX_URL }}
@@ -183,9 +173,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: |
-            ${{ secrets.new_repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
-            ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
+          tags: ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
           build-args: PIP_INDEX_URL=${{ env.PIP_INDEX_URL }}
 
       - name: Add image info to workflow summary
