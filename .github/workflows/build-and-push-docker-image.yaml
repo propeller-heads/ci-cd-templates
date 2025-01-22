@@ -78,7 +78,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
           token: ${{ steps.generate-token.outputs.token }}
 
       - name: Assume role
