@@ -76,7 +76,7 @@ jobs:
         run: npm i -g npm@10.5.0
 
       - name: Install dependencies
-        run: npm install --save-dev  semantic-release@23.0.2 @semantic-release/changelog@6.0.3 @semantic-release/git@10.0.1 conventional-changelog-conventionalcommits@7.0.2 conventional-changelog-eslint@5.0.0 @semantic-release/exec@6.0.3 --legacy-peer-deps
+        run: npm install --save-dev semver@7.6.3 semantic-release@23.0.2 @semantic-release/changelog@6.0.3 @semantic-release/git@10.0.1 conventional-changelog-conventionalcommits@7.0.2 conventional-changelog-eslint@5.0.0 @semantic-release/exec@6.0.3 --legacy-peer-deps
 
       - name: Verify the integrity of provenance attestations and registry signatures for installed dependencies
         run: npm audit signatures
