@@ -172,12 +172,17 @@ jobs:
         uses: docker/setup-buildx-action@v3
 
       - name: Cache Docker layers
+        if: ${{ inputs.build_tool == 'docker' && steps.check-image.outputs.skip_remaining_steps != 'true' }}
         uses: actions/cache@v4
         with:
           path: /tmp/.buildx-cache
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-
+
+      - name: Debug Buildx Cache
+        if: ${{ inputs.build_tool == 'docker' && steps.check-image.outputs.skip_remaining_steps != 'true' }}
+        run: docker buildx du
 
       - name: Build and push docker image with docker
         if: ${{ inputs.build_tool == 'docker' && steps.check-image.outputs.skip_remaining_steps != 'true' }}
