@@ -40,6 +40,10 @@ on:
         required: false
         type: string
         default: kaniko
+      context:
+        required: false
+        type: string
+        default: .
     secrets:
       app_id:
         required: true
@@ -160,6 +164,7 @@ jobs:
         if: ${{ inputs.build_tool == 'kaniko' && steps.check-image.outputs.skip_remaining_steps != 'true' }}
         uses: int128/kaniko-action@v1
         with:
+          context: ${{ inputs.context }}
           push: true
           tags: ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
           cache: "${{ inputs.cache }}"
@@ -171,7 +176,7 @@ jobs:
         if: ${{ inputs.build_tool == 'docker' && steps.check-image.outputs.skip_remaining_steps != 'true' }}
         uses: docker/build-push-action@v6
         with:
-          context: .
+          context: ${{ inputs.context }}
           push: true
           tags: ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
           build-args: PIP_INDEX_URL=${{ env.PIP_INDEX_URL }}
