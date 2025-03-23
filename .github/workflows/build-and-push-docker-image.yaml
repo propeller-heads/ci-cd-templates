@@ -61,7 +61,7 @@ jobs:
     steps:
       - name: Generate a token
         id: generate-token
-        uses: getsentry/action-github-app-token@v2
+        uses: getsentry/action-github-app-token@d4b5da6c5e37703f8c3b3e43abb5705b46e159cc
         with:
           app_id: ${{ secrets.app_id }}
           private_key: ${{ secrets.app_private_key }}
@@ -70,20 +70,20 @@ jobs:
         run: sudo apt update && sudo apt install -y git
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           submodules: recursive
           token: ${{ steps.generate-token.outputs.token }}
 
       - name: Assume role
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@ececac1a45f3b08a01d2dd070d28d111c5fe6722
         with:
           role-to-assume: "${{ secrets.role_to_assume }}"
           audience: sts.amazonaws.com
           aws-region: "${{ secrets.aws_region }}"
 
       - name: Login in ECR
-        uses: aws-actions/amazon-ecr-login@v2
+        uses: aws-actions/amazon-ecr-login@062b18b96a7aff071d4dc91bc00c4c1a7945b076
         id: ecr
 
       - name: Check if image already exists
@@ -139,7 +139,7 @@ jobs:
 
       - name: Setup toolchain
         if: "${{ inputs.image_name == 'propeller-searcher' && steps.check-image.outputs.skip_remaining_steps != 'true' }}"
-        uses: dtolnay/rust-toolchain@v1
+        uses: dtolnay/rust-toolchain@888c2e1ea69ab0d4330cbf0af1ecc7b68f368cc1
         with:
           toolchain: stable
 
@@ -158,7 +158,7 @@ jobs:
 
       - name: Build and push docker image with kaniko
         if: ${{ inputs.build_tool == 'kaniko' && steps.check-image.outputs.skip_remaining_steps != 'true' }}
-        uses: int128/kaniko-action@v1
+        uses: int128/kaniko-action@51bb83134884a45cd42b44964c4f7be46256ec79
         with:
           push: true
           tags: ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
@@ -169,7 +169,7 @@ jobs:
 
       - name: Build and push docker image with docker
         if: ${{ inputs.build_tool == 'docker' && steps.check-image.outputs.skip_remaining_steps != 'true' }}
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4
         with:
           context: .
           push: true
