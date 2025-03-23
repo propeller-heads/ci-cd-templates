@@ -29,7 +29,7 @@ jobs:
     steps:
       - name: Generate a token
         id: generate-token
-        uses: getsentry/action-github-app-token@v2
+        uses: getsentry/action-github-app-token@d4b5da6c5e37703f8c3b3e43abb5705b46e159cc
         with:
           app_id: ${{ secrets.app_id }}
           private_key: ${{ secrets.app_private_key }}
@@ -38,13 +38,13 @@ jobs:
         run: sudo apt update && sudo apt install -y git
 
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
           persist-credentials: false
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@cdca7365b2dadb8aad0a33bc7601856ffabcc48e
         with:
           node-version: 20.11.1
 
