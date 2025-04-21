@@ -44,7 +44,7 @@ jobs:
         with:
           fetch-depth: 0
           repository: propeller-heads/helm-configuration
-          ref: main
+          ref: pm/update-turbine-swagger-config
           token: ${{ steps.generate-token.outputs.token }}
 
       - name: Replace release version
