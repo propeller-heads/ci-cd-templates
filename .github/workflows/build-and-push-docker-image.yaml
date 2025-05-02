@@ -175,6 +175,8 @@ jobs:
           push: true
           tags: ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
           build-args: PIP_INDEX_URL=${{ env.PIP_INDEX_URL }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
       - name: Add image info to workflow summary
         run: |
