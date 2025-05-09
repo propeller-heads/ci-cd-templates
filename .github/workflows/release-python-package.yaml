@@ -70,7 +70,7 @@ jobs:
     steps:
       - name: Generate a token
         id: generate-token
-        uses: getsentry/action-github-app-token@v2
+        uses: getsentry/action-github-app-token@d4b5da6c5e37703f8c3b3e43abb5705b46e159cc
         with:
           app_id: ${{ secrets.app_id }}
           private_key: ${{ secrets.app_private_key }}
@@ -84,19 +84,19 @@ jobs:
         run: brew update && brew install git
 
       - name: Check out Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@ececac1a45f3b08a01d2dd070d28d111c5fe6722
         with:
           role-to-assume: ${{ secrets.role_to_assume }}
           audience: sts.amazonaws.com
           aws-region: ${{ secrets.aws_region }}
 
       - name: Install AWS CLI
-        uses: unfor19/install-aws-cli-action@v1
+        uses: unfor19/install-aws-cli-action@e8b481e524a99f37fbd39fdc1dcb3341ab091367
         if: ${{ runner.os != 'macOS' }}
         with:
           version: 2
@@ -106,7 +106,7 @@ jobs:
           workdir: ""
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@42375524e23c412d93fb67b49958b491fce71c38
         with:
           python-version: ${{ inputs.py_version }}
 
@@ -135,7 +135,7 @@ jobs:
           cat Dockerfile.wheel
 
       - name: Build Docker Image | Build wheel for Linux (with maturin)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4
         if: ${{ runner.os == 'Linux' && inputs.use_maturin }}
         with:
           context: .
@@ -144,7 +144,7 @@ jobs:
           push: false
 
       - name: Build | Build wheel for Linux (with maturin)
-        uses: addnab/docker-run-action@v3
+        uses: addnab/docker-run-action@4f65fabd2431ebc8d299f8e5a018d79a769ae185
         if: ${{ runner.os == 'Linux' && inputs.use_maturin }}
         with:
           image: linux-wheel-builder
@@ -162,17 +162,17 @@ jobs:
       - name: Set up Homebrew | Build wheel for macOS (with maturin)
         if: ${{ runner.os == 'macOS' && inputs.use_maturin }}
         id: set-up-homebrew
-        uses: Homebrew/actions/setup-homebrew@master
+        uses: Homebrew/actions/setup-homebrew@266845213695c3047d210b2e8fbc42ecdaf45802
 
       - name: Setup Rust | Build wheel for macOS (with maturin)
         if: ${{ runner.os == 'macOS' && inputs.use_maturin }}
-        uses: dtolnay/rust-toolchain@v1
+        uses: dtolnay/rust-toolchain@888c2e1ea69ab0d4330cbf0af1ecc7b68f368cc1
         with:
           toolchain: stable
 
       - name: Setup Rust Cache | Build wheel for macOS (with maturin)
         if: ${{ runner.os == 'macOS' && inputs.use_maturin }}
-        uses: Swatinem/rust-cache@v2
+        uses: Swatinem/rust-cache@9d47c6ad4b02e050fd481d890b2ea34778fd09d6
         with:
           cache-on-failure: true
 
