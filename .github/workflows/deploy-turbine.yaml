@@ -66,7 +66,7 @@ jobs:
         uses: aws-actions/aws-secretsmanager-get-secrets@5e19ff380d035695bdd56bbad320ca535c9063f2
         with:
           secret-ids: |
-            ,arn:aws:secretsmanager:${{ secrets.aws_region }}:${{ secrets.domin_owner }}:secret:${{ inputs.aws_secret }}
+            ,arn:aws:secretsmanager:${{ secrets.aws_region }}:${{ secrets.domain_owner }}:secret:${{ inputs.aws_secret }}
           parse-json-secrets: true
 
       - name: Setup Node
