@@ -1,0 +1,113 @@
+name: Turbine; Deploy
+
+on:
+  workflow_call:
+    inputs:
+      runs_on:
+        required: false
+        type: string
+        default: ubuntu-24.04
+        description: Runner tag for workflow
+      timeout_minutes:
+        required: false
+        type: number
+        default: 30
+        description: Timeout for workflow
+      rust_log:
+        required: true
+        type: string
+        default: turbine=debug
+        description: Rust log level
+      turbine_config_file:
+        required: true
+        type: string
+        default: turbine_config_staging.toml
+        description: Path to the config file
+      cvm_name:
+        required: true
+        type: string
+        default: staging-turbine
+        description: CVM name
+      frontend_url:
+        required: true
+        type: string
+        default: https://staging-swap.propellerheads.xyz/
+        description: URL of the frontend
+      image_tag:
+        required: true
+        type: string
+        description: Image tag for docker artifact
+      aws_secret:
+        required: true
+        type: string
+        description: AWS Secret Manager secret name
+    secrets:
+      aws_region:
+        required: true
+      role_to_assume:
+        required: true
+      domain_owner:
+        required: true
+
+jobs:
+  deploy:
+    name: Deploy
+    runs-on: ${{ inputs.runs_on }}
+    timeout-minutes: ${{ inputs.timeout_minutes }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+
+      - name: Assume role
+        uses: aws-actions/configure-aws-credentials@ececac1a45f3b08a01d2dd070d28d111c5fe6722
+        with:
+          role-to-assume: ${{ secrets.role_to_assume }}
+          audience: sts.amazonaws.com
+          aws-region: ${{ secrets.aws_region }}
+
+      - name: Get secrets from AWS Secrets Manager
+        id: secrets
+        uses: aws-actions/aws-secretsmanager-get-secrets@5e19ff380d035695bdd56bbad320ca535c9063f2
+        with:
+          secret-ids: |
+            ,arn:aws:secretsmanager:${{ secrets.aws_region }}:${{ secrets.domin_owner }}:secret:${{ inputs.aws_secret }}
+          parse-json-secrets: true
+
+      - name: Setup Node
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 18
+
+      - name: Install Docker
+        uses: docker/setup-docker-action@b60f85385d03ac8acfca6d9996982511d8620a19
+
+      - name: Install Phala Cloud CLI
+        run: |
+          curl -fsSL https://bun.sh/install | bash
+          export BUN_INSTALL="$HOME/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          npm install -g phala
+          phala auth login ${{ env.PHALA_API_KEY }}
+          phala auth status
+
+      - name: Create or Upgrade Phala CVMs
+        run: |
+          export BUN_INSTALL="$HOME/.bun"
+          export PATH="$BUN_INSTALL/bin:$PATH"
+          echo AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID > .env
+          echo AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY >> .env
+          echo AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN >> .env
+          echo AWS_DEFAULT_REGION=$AWS_DEFAULT_REGION >> .env
+          echo TURBINE_SIGNER_PKEY=${{ env.TURBINE_SIGNER_PKEY }} >> .env
+          echo TYCHO_AUTH_KEY=${{ env.TYCHO_AUTH_KEY }} >> .env
+          echo RUST_LOG=$RUST_LOG >> .env
+          echo DOCKER_IMAGE_TAG=${{ inputs.image_tag }} >> .env
+          echo FRONTEND_URL=$FRONTEND_URL >> .env
+          CVM_ID=`phala cvms ls -j | tail -n +2 | jq -r '.[] | select(.hosted.name == "'${{ inputs.cvm_name }}'") | .hosted.app_id'`
+          if [ -z "$CVM_ID" ]; then
+            echo "CVM is not found. Creating..."
+            phala cvms create -c ./docker-compose-dstack.yaml -n ${{ inputs.cvm_name }} -e ./.env
+          else
+            echo "CVM is found. Upgrading..."
+            phala cvms upgrade $CVM_ID -c ./docker-compose-dstack.yaml -e ./.env
+          fi
