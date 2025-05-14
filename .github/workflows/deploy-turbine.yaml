@@ -16,22 +16,18 @@ on:
       rust_log:
         required: true
         type: string
-        default: turbine=debug
         description: Rust log level
       turbine_config_file:
         required: true
         type: string
-        default: turbine_config_staging.toml
         description: Path to the config file
       cvm_name:
         required: true
         type: string
-        default: staging-turbine
         description: CVM name
       frontend_url:
         required: true
         type: string
-        default: https://staging-swap.propellerheads.xyz/
         description: URL of the frontend
       image_tag:
         required: true
