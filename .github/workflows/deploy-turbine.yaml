@@ -96,6 +96,8 @@ jobs:
           echo AWS_DEFAULT_REGION=${{ secrets.aws_region }} >> .env
           echo TURBINE_SIGNER_PKEY=${{ env.TURBINE_SIGNER_PKEY }} >> .env
           echo TYCHO_AUTH_KEY=${{ env.TYCHO_AUTH_KEY }} >> .env
+          echo CLOUDFLARE_API_TOKEN=${{ env.CLOUDFLARE_API_TOKEN }} >> .env
+          echo DOMAIN=${{ env.DOMAIN }} >> .env
           echo RUST_LOG=${{ inputs.rust_log }} >> .env
           echo DOCKER_IMAGE_TAG=${{ inputs.image_tag }} >> .env
           echo FRONTEND_URL=${{ inputs.frontend_url }} >> .env
