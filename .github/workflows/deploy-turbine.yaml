@@ -109,11 +109,16 @@ jobs:
           echo RUST_LOG=${{ inputs.rust_log }} >> .env
           echo DOCKER_IMAGE_TAG=${{ inputs.image_tag }} >> .env
           echo FRONTEND_URL=${{ inputs.frontend_url }} >> .env
-          echo GATEWAY_DOMAIN=${{ inputs.gateway_domain }} >> .env
           CVM_ID=`phala cvms ls -j | tail -n +2 | jq -r '.[] | select(.hosted.name == "'${{ inputs.cvm_name }}'") | .hosted.app_id'`
+          CVM_TYPE=`phala cvms ls -j | tail -n +2 | jq -r '.[] | select(.hosted.name == "'${{ inputs.cvm_name }}'") | .node.name'`
+          echo GATEWAY_DOMAIN=_.dstack-$CVM_TYPE.phala.network >> .env
           if [ -z "$CVM_ID" ]; then
             echo "CVM is not found. Creating..."
             phala cvms create -c ./docker-compose-dstack.yaml -n ${{ inputs.cvm_name }} -e ./.env
+            sleep 30
+            CVM_TYPE=`phala cvms ls -j | tail -n +2 | jq -r '.[] | select(.hosted.name == "'${{ inputs.cvm_name }}'") | .node.name'`
+            echo GATEWAY_DOMAIN=_.dstack-$CVM_TYPE.phala.network >> .env
+            phala cvms upgrade $CVM_ID -c ./docker-compose-dstack.yaml -e ./.env
           else
             echo "CVM is found. Upgrading..."
             phala cvms upgrade $CVM_ID -c ./docker-compose-dstack.yaml -e ./.env
