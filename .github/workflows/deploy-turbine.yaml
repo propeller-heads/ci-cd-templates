@@ -110,7 +110,7 @@ jobs:
           if [ -z "$CVM_ID" ]; then
             echo "CVM is not found. Creating..."
             phala cvms create -c ./docker-compose-dstack.yaml -n ${{ inputs.cvm_name }} -e ./.env
-            sleep 30
+            sleep 10
             CVM_ID=`phala cvms ls -j | tail -n +2 | jq -r '.[] | select(.hosted.name == "'${{ inputs.cvm_name }}'") | .hosted.app_id'`
             CVM_TYPE=`phala cvms ls -j | tail -n +2 | jq -r '.[] | select(.hosted.name == "'${{ inputs.cvm_name }}'") | .node.name'`
             echo GATEWAY_DOMAIN=_.dstack-$CVM_TYPE.phala.network >> .env
