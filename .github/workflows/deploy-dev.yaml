@@ -45,13 +45,13 @@ jobs:
     steps:
       - name: Generate a token
         id: generate-token
-        uses: getsentry/action-github-app-token@v2
+        uses: getsentry/action-github-app-token@d4b5da6c5e37703f8c3b3e43abb5705b46e159cc
         with:
           app_id: ${{ secrets.app_id }}
           private_key: ${{ secrets.app_private_key }}
 
       - name: Checkout helmwave values
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           repository: propeller-heads/helm-configuration
           ref: main
@@ -59,7 +59,7 @@ jobs:
           path: ./tmp/
 
       - name: Install-aws-cli
-        uses: unfor19/install-aws-cli-action@v1
+        uses: unfor19/install-aws-cli-action@e8b481e524a99f37fbd39fdc1dcb3341ab091367
         with:
           version: 2
           verbose: false
@@ -68,7 +68,7 @@ jobs:
           workdir: ""
 
       - name: Assume role
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@ececac1a45f3b08a01d2dd070d28d111c5fe6722
         with:
           role-to-assume: "${{ secrets.role_to_assume }}"
           audience: sts.amazonaws.com
@@ -78,7 +78,7 @@ jobs:
         run: aws eks update-kubeconfig --name "${{ secrets.eks_cluster_name }}" --region "${{ secrets.aws_region }}"
 
       - name: Install helmwave
-        uses: helmwave/setup-action@v0.3.0
+        uses: helmwave/setup-action@a2b84aea3434be147501a53655b9fec902532533
         with:
           version: 0.37.1
 

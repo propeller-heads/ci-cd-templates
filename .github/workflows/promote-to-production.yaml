@@ -39,7 +39,7 @@ jobs:
     steps:
       - name: Generate a token
         id: generate-token
-        uses: getsentry/action-github-app-token@v2
+        uses: getsentry/action-github-app-token@d4b5da6c5e37703f8c3b3e43abb5705b46e159cc
         with:
           app_id: ${{ secrets.app_id }}
           private_key: ${{ secrets.app_private_key }}
@@ -48,7 +48,7 @@ jobs:
         run: sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
 
       - name: Checkout ci/cd templates
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           fetch-depth: 0
           repository: propeller-heads/helm-configuration
@@ -60,7 +60,7 @@ jobs:
           yq eval '.${{ inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/prod/versions.yml
 
       - name: Create pull request
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@c5a7806660adbe173f04e3e038b0ccdcd758773c
         with:
           commit-message: "Updated image version ${{ inputs.image_tag }} for application ${{ inputs.image_name }}"
           add-paths: |
