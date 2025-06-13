@@ -94,10 +94,10 @@ jobs:
         run: |
           export BUN_INSTALL="$HOME/.bun"
           export PATH="$BUN_INSTALL/bin:$PATH"
-          echo AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID > .env
-          echo AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY >> .env
-          echo AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN >> .env
-          echo AWS_DEFAULT_REGION=${{ secrets.aws_region }} >> .env
+          echo DSTACK_AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID > .env
+          echo DSTACK_AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY >> .env
+          echo DSTACK_AWS_REGION=${{ secrets.aws_region }} >> .env
+          echo DSTACK_AWS_ECR_REGISTRY=120569639765.dkr.ecr.eu-central-1.amazonaws.com >> .env
           echo TURBINE_SIGNER_PKEY=${{ env.TURBINE_SIGNER_PKEY }} >> .env
           echo TYCHO_AUTH_KEY=${{ env.TYCHO_AUTH_KEY }} >> .env
           echo CLOUDFLARE_API_TOKEN=${{ env.CLOUDFLARE_API_TOKEN }} >> .env
@@ -109,7 +109,7 @@ jobs:
           if [ -z "$CVM_ID" ]; then
             echo "CVM is not found. Creating..."
             phala cvms create -c ./docker-compose-dstack.yaml -n ${{ inputs.cvm_name }} -e ./.env
-            sleep 10
+            sleep 180
             CVM_ID=`phala cvms ls -j | tail -n +2 | jq -r '.[] | select(.hosted.name == "'${{ inputs.cvm_name }}'") | .hosted.app_id'`
             CVM_TYPE=`phala cvms ls -j | tail -n +2 | jq -r '.[] | select(.hosted.name == "'${{ inputs.cvm_name }}'") | .node.name'`
             echo GATEWAY_DOMAIN=_.dstack-$CVM_TYPE.phala.network >> .env
