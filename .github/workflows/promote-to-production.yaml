@@ -19,6 +19,15 @@ on:
         required: true
         type: string
         description: Application name
+      app_name:
+        required: false
+        type: string
+        description: |
+          Application name. This is the release name in versions.yml in helm-configuration repo.
+          If your release is named the same as your docker image, there's no need to set app_name
+          (if you don't set app_name, image_name will be used as release name).
+          But if your release name is different (e.g. you use the same image for multiple releases),
+          then you must set app_name.
       assignees:
         required: false
         type: string
@@ -57,12 +66,12 @@ jobs:
 
       - name: Replace release version
         run: |
-          yq eval '.${{ inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/prod/versions.yml
+          yq eval '.${{ inputs.app_name || inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/prod/versions.yml
 
       - name: Create pull request
         uses: peter-evans/create-pull-request@v6
         with:
-          commit-message: "Updated image version ${{ inputs.image_tag }} for application ${{ inputs.image_name }}"
+          commit-message: "Updated image version to ${{ inputs.image_name }}:${{ inputs.image_tag }} for application ${{ inputs.app_name || inputs.image_name }}"
           add-paths: |
             helmwave/prod/versions.yml
           token: ${{ steps.generate-token.outputs.token }}
@@ -71,6 +80,11 @@ jobs:
           delete-branch: true
           body: |
             This PR was created automatically by promote-to-production workflow from [${{ inputs.image_name }}](https://github.com/propeller-heads/${{ inputs.image_name }}) repository.
-            - Updated image tag for ${{ inputs.image_name }} to ${{ inputs.image_tag }}.
+            - Updated image tag for ${{ inputs.app_name || inputs.image_name }} to ${{ inputs.image_name }}:${{ inputs.image_tag }}.
           assignees: "${{ inputs.assignees }}"
           reviewers: "${{ inputs.reviewers }}"
+
+      - name: Set workflow summary
+        run: |
+          echo "### Set new production image for ${{ inputs.app_name || inputs.image_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`${{ inputs.image_name }}:${{ inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
