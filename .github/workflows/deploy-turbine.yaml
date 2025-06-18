@@ -96,6 +96,7 @@ jobs:
           export PATH="$BUN_INSTALL/bin:$PATH"
           echo DSTACK_AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID > .env
           echo DSTACK_AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY >> .env
+          echo DSTACK_AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN >> .env
           echo DSTACK_AWS_REGION=${{ secrets.aws_region }} >> .env
           echo DSTACK_AWS_ECR_REGISTRY=120569639765.dkr.ecr.eu-central-1.amazonaws.com >> .env
           echo TURBINE_SIGNER_PKEY=${{ env.TURBINE_SIGNER_PKEY }} >> .env
