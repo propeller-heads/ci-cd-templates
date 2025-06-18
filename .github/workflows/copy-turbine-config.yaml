@@ -1,0 +1,80 @@
+name: Copy and Commmit turbine config
+
+on:
+  workflow_call:
+    inputs:
+      runs_on:
+        required: false
+        type: string
+        default: ubuntu-latest
+      timeout_minutes:
+        required: false
+        type: number
+        default: 30
+      image_tag:
+        required: true
+        type: string
+        description: SHA commit value
+    secrets:
+      app_id:
+        required: true
+      app_private_key:
+        required: true
+
+jobs:
+  copy-turbine-config-dev:
+    runs-on: "${{ inputs.runs_on }}"
+    steps:
+      - name: Generate a token
+        id: generate-token
+        uses: getsentry/action-github-app-token@v2
+        with:
+          app_id: ${{ secrets.app_id }}
+          private_key: ${{ secrets.app_private_key }}
+
+      - name: Install yq
+        run: sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+
+      - name: Make directory for app repo
+        run: mkdir app_repo
+
+      - name: Checkout Turbine repo
+        uses: actions/checkout@v4
+        with:
+          path: app_repo
+          token: ${{ steps.generate-token.outputs.token }}
+
+      - name: Export value of turbine_config.toml to variable
+        run: |
+          {
+            echo "TOML_CONTENT<<EOF"
+            cat app_repo/turbine_config.toml
+            echo ""  # ensure newline before EOF
+            echo "EOF"
+          } >> $GITHUB_ENV
+
+      - name: Checkout helm-configuration repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          repository: propeller-heads/helm-configuration
+          ref: TRB-353-automate-deployments
+          token: ${{ steps.generate-token.outputs.token }}
+
+      - name: Replace config values in the turbine configmap
+        run: |
+          head -n 4 helmwave/dev/values/turbine/turbine.yml > first_line.txt
+          tail -n +5 helmwave/dev/values/turbine/turbine.yml > rest.yaml
+          yq -i eval '.turbineConfig.config = strenv(TOML_CONTENT) | .turbineConfig.config style="literal"' rest.yaml
+          cat first_line.txt rest.yaml > helmwave/dev/values/turbine/turbine.yml
+          rm -f first_line.txt rest.yaml
+
+      - name: Check the values of configmap
+        run: cat helmwave/dev/values/turbine/turbine.yml
+
+      - name: Commit & Push changes
+        uses: actions-js/push@master
+        with:
+          github_token: ${{ steps.generate-token.outputs.token }}
+          message: Update helmwave/dev/values/turbine/turbine.yml with tag ${{ inputs.image_tag }}
+          repository: propeller-heads/helm-configuration
