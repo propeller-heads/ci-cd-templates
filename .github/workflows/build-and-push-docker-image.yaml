@@ -29,7 +29,7 @@ on:
       build_args:
         required: false
         type: string
-        description: Build args
+        description: Build args. Newline-delimited list of key=value pairs.
       tycho_client_version_default:
         type: string
         required: false
@@ -164,9 +164,9 @@ jobs:
           tags: ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
           cache: "${{ inputs.cache }}"
           cache-repository: "${{ secrets.repository_url }}/${{ inputs.image_name }}"
-          build-args: PIP_INDEX_URL=${{ env.PIP_INDEX_URL }}
+          build-args: "PIP_INDEX_URL=${{ env.PIP_INDEX_URL }},${{ inputs.build_args }}"
           #verbosity: DEBUG
-          
+
       - name: Set up Docker Buildx
         if: ${{ inputs.build_tool == 'docker' && steps.check-image.outputs.skip_remaining_steps != 'true' }}
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2
@@ -178,7 +178,9 @@ jobs:
           context: .
           push: true
           tags: ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
-          build-args: PIP_INDEX_URL=${{ env.PIP_INDEX_URL }}
+          build-args: |
+            PIP_INDEX_URL=${{ env.PIP_INDEX_URL }}
+            ${{ inputs.build_args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
