@@ -1,4 +1,4 @@
-name: Turbine; Deploy
+name: Turbine; Deploy to DStack
 
 on:
   workflow_call:
@@ -100,6 +100,7 @@ jobs:
           echo DSTACK_AWS_REGION=${{ secrets.aws_region }} >> .env
           echo DSTACK_AWS_ECR_REGISTRY=120569639765.dkr.ecr.eu-central-1.amazonaws.com >> .env
           echo TURBINE_SIGNER_PKEY=${{ env.TURBINE_SIGNER_PKEY }} >> .env
+          echo TURBINE_CONFIG_FILE=${{ inputs.turbine_config_file }} >> .env
           echo TYCHO_AUTH_KEY=${{ env.TYCHO_AUTH_KEY }} >> .env
           echo CLOUDFLARE_API_TOKEN=${{ env.CLOUDFLARE_API_TOKEN }} >> .env
           echo DOMAIN=${{ inputs.domain }} >> .env
