@@ -164,7 +164,9 @@ jobs:
           tags: ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
           cache: "${{ inputs.cache }}"
           cache-repository: "${{ secrets.repository_url }}/${{ inputs.image_name }}"
-          build-args: "PIP_INDEX_URL=${{ env.PIP_INDEX_URL }},${{ inputs.build_args }}"
+          build-args: |
+            PIP_INDEX_URL=${{ env.PIP_INDEX_URL }}
+            ${{ inputs.build_args }}
           #verbosity: DEBUG
 
       - name: Set up Docker Buildx
