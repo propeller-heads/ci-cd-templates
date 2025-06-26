@@ -1,0 +1,90 @@
+name: Promote to staging
+
+on:
+  workflow_call:
+    inputs:
+      runs_on:
+        required: false
+        type: string
+        default: ubuntu-latest
+      timeout_minutes:
+        required: false
+        type: number
+        default: 30
+      image_tag:
+        required: true
+        type: string
+        description: Image tag
+      image_name:
+        required: true
+        type: string
+        description: Application name
+      app_name:
+        required: false
+        type: string
+        description: |
+          Application name. This is the release name in versions.yml in helm-configuration repo.
+          If your release is named the same as your docker image, there's no need to set app_name
+          (if you don't set app_name, image_name will be used as release name).
+          But if your release name is different (e.g. you use the same image for multiple releases),
+          then you must set app_name.
+      assignees:
+        required: false
+        type: string
+        description: PR assignees
+      reviewers:
+        required: false
+        type: string
+        description: PR reviewers
+    secrets:
+      app_id:
+        required: true
+      app_private_key:
+        required: true
+
+jobs:
+  promote-to-staging:
+    runs-on: "${{ inputs.runs_on }}"
+    steps:
+      - name: Generate a token
+        id: generate-token
+        uses: getsentry/action-github-app-token@v2
+        with:
+          app_id: ${{ secrets.app_id }}
+          private_key: ${{ secrets.app_private_key }}
+
+      - name: Install yq
+        run: sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
+
+      - name: Checkout ci/cd templates
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          repository: propeller-heads/helm-configuration
+          ref: main
+          token: ${{ steps.generate-token.outputs.token }}
+
+      - name: Replace release version
+        run: |
+          yq eval '.${{ inputs.app_name || inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/staging/versions.yml
+
+      - name: Create pull request
+        uses: peter-evans/create-pull-request@v6
+        with:
+          commit-message: "Updated image version to ${{ inputs.image_name }}:${{ inputs.image_tag }} for application ${{ inputs.app_name || inputs.image_name }}"
+          add-paths: |
+            helmwave/staging/versions.yml
+          token: ${{ steps.generate-token.outputs.token }}
+          branch: "staging-release-${{ inputs.image_name }}-${{ inputs.image_tag }}"
+          title: "Automated PR from repository ${{ inputs.image_name }}"
+          delete-branch: true
+          body: |
+            This PR was created automatically by promote-to-staging workflow from [${{ inputs.image_name }}](https://github.com/propeller-heads/${{ inputs.image_name }}) repository.
+            - Updated image tag for ${{ inputs.app_name || inputs.image_name }} to ${{ inputs.image_name }}:${{ inputs.image_tag }}.
+          assignees: "${{ inputs.assignees }}"
+          reviewers: "${{ inputs.reviewers }}"
+
+      - name: Set workflow summary
+        run: |
+          echo "### Set new staging image for ${{ inputs.app_name || inputs.image_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "\`${{ inputs.image_name }}:${{ inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
