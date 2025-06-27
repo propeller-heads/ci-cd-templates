@@ -69,6 +69,7 @@ jobs:
           yq eval '.${{ inputs.app_name || inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/staging/versions.yml
 
       - name: Create pull request
+        id: create-pr
         uses: peter-evans/create-pull-request@v6
         with:
           commit-message: "Updated image version to ${{ inputs.image_name }}:${{ inputs.image_tag }} for application ${{ inputs.app_name || inputs.image_name }}"
@@ -86,5 +87,7 @@ jobs:
 
       - name: Set workflow summary
         run: |
-          echo "### Set new staging image for ${{ inputs.app_name || inputs.image_name }}" >> $GITHUB_STEP_SUMMARY
+          echo "### Approve this Pull Request:" >> $GITHUB_STEP_SUMMARY
+          echo "${{ steps.create-pr.outputs.pull-request-url }}" >> $GITHUB_STEP_SUMMARY
+          echo "#### Set new staging image for ${{ inputs.app_name || inputs.image_name }}" >> $GITHUB_STEP_SUMMARY
           echo "\`${{ inputs.image_name }}:${{ inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
