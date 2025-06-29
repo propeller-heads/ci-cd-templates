@@ -95,7 +95,7 @@ jobs:
 
       - name: Replace release version
         run: |
-          yq eval '.${{ inputs.app_name || inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/dev/versions.yml
+          yq eval '.${{ inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/dev/versions.yml
           cat helmwave/dev/versions.yml
 
       - name: Deploy app using helmwave
