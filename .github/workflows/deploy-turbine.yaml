@@ -95,9 +95,9 @@ jobs:
           echo DSTACK_AWS_SESSION_TOKEN=$AWS_SESSION_TOKEN >> .env
           echo DSTACK_AWS_REGION=${{ secrets.aws_region }} >> .env
           echo DSTACK_AWS_ECR_REGISTRY=120569639765.dkr.ecr.eu-central-1.amazonaws.com >> .env
-          echo SUBMIT_PROVIDER_RPC_URL=${{ env.SUBMIT_PROVIDER_RPC_URL }} >> .env
-          echo READ_PROVIDER_RPC_URL=${{ env.READ_PROVIDER_RPC_URL }} >> .env
-          echo READ_PROVIDER_WS_RPC_URL=${{ env.READ_PROVIDER_WS_RPC_URL }} >> .env
+          echo SUBMIT_PROVIDER_RPC_URL="${{ env.SUBMIT_PROVIDER_RPC_URL }}" >> .env
+          echo READ_PROVIDER_RPC_URL="${{ env.READ_PROVIDER_RPC_URL }}" >> .env
+          echo READ_PROVIDER_WS_RPC_URL="${{ env.READ_PROVIDER_WS_RPC_URL }}" >> .env
           echo TURBINE_SIGNER_PKEY=${{ env.TURBINE_SIGNER_PKEY }} >> .env
           echo TURBINE_CONFIG_FILE=${{ inputs.turbine_config_file }} >> .env
           echo TYCHO_AUTH_KEY=${{ env.TYCHO_AUTH_KEY }} >> .env
