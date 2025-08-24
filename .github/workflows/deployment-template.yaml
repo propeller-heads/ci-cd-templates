@@ -54,7 +54,7 @@ jobs:
           private_key: ${{ secrets.app_private_key }}
 
       - name: Checkout helm-configuration repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
 
