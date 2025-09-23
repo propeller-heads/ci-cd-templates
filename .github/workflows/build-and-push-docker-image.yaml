@@ -86,21 +86,59 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
         id: ecr
 
+
       - name: Check if image already exists
         id: check-image
         shell: bash
         run: |
-          IMAGE="${{ inputs.image_name }}:${{ inputs.image_tag }}"
-
-          # Try to pull the image from the new repository
-          if aws ecr describe-images --registry-id ${{ secrets.domain_owner }} --repository-name ${{ inputs.image_name }} --image-ids imageTag=${{ inputs.image_tag }} 2>/dev/null; then
-            echo "Image $IMAGE already exists in the repository"
+          # Split the input image_tag by newlines and check each tag
+          mapfile -t TAGS <<< "${{ inputs.image_tag }}"
+          
+          MISSING_TAGS=()
+          EXISTING_TAGS=()
+          
+          for tag in "${TAGS[@]}"; do
+            # Remove any leading/trailing whitespace from the tag and replace any slash with a dash
+            TAG=$(echo "$tag" | xargs | sed 's|/|-|g')
+            if [ -n "$TAG" ]; then
+              if aws ecr describe-images --registry-id ${{ secrets.domain_owner }} --repository-name ${{ inputs.image_name }} --image-ids imageTag=$TAG 2>/dev/null; then
+                echo "Image ${{ inputs.image_name }}:$TAG already exists in the repository"
+                EXISTING_TAGS+=("$TAG")
+              else
+                echo "Image ${{ inputs.image_name }}:$TAG not found, will be built"
+                MISSING_TAGS+=("$TAG")
+              fi
+            fi
+          done
+          
+          if [ ${#MISSING_TAGS[@]} -eq 0 ]; then
+            echo "All images already exist in the repository"
             echo "skip_remaining_steps=true" >> $GITHUB_OUTPUT
-            exit 0
+            echo "existing_tags=${EXISTING_TAGS[*]}" >> $GITHUB_OUTPUT
+            echo "missing_tags=" >> $GITHUB_OUTPUT
           else
-            echo "Image $IMAGE not found, proceeding with build"
+            echo "Some images need to be built"
             echo "skip_remaining_steps=false" >> $GITHUB_OUTPUT
+            echo "existing_tags=${EXISTING_TAGS[*]}" >> $GITHUB_OUTPUT
+            echo "missing_tags=${MISSING_TAGS[*]}" >> $GITHUB_OUTPUT
           fi
+
+      - name: Create full image specs for missing images
+        if: steps.check-image.outputs.skip_remaining_steps != 'true'
+        id: create-full-image-specs
+        shell: bash
+        run: |
+          # Create newline-separated list for full image specs (only missing ones)
+          FULL_IMAGE_SPECS=""
+          for tag in ${{ steps.check-image.outputs.missing_tags }}; do
+            if [ -n "$FULL_IMAGE_SPECS" ]; then
+              FULL_IMAGE_SPECS+=$'\n'
+            fi
+            FULL_IMAGE_SPECS+="${{ secrets.repository_url }}/${{ inputs.image_name }}:$tag"
+          done
+          echo "full_image_specs<<EOF" >> $GITHUB_OUTPUT
+          echo "$FULL_IMAGE_SPECS" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
 
       - name: Download Tycho-client from S3
         if: "${{ inputs.image_name == 'defibot' && steps.check-image.outputs.skip_remaining_steps != 'true' }}"
@@ -161,7 +199,7 @@ jobs:
         uses: int128/kaniko-action@v1
         with:
           push: true
-          tags: ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
+          tags: ${{ steps.create-full-image-specs.outputs.full_image_specs }}
           cache: "${{ inputs.cache }}"
           cache-repository: "${{ secrets.repository_url }}/${{ inputs.image_name }}"
           build-args: |
@@ -179,7 +217,7 @@ jobs:
         with:
           context: .
           push: true
-          tags: ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
+          tags: ${{ steps.create-full-image-specs.outputs.full_image_specs }}
           build-args: |
             PIP_INDEX_URL=${{ env.PIP_INDEX_URL }}
             ${{ inputs.build_args }}
@@ -189,8 +227,24 @@ jobs:
       - name: Add image info to workflow summary
         run: |
           if [[ "${{ steps.check-image.outputs.skip_remaining_steps }}" == "true" ]]; then
-            echo "### Didn't push Docker image because it is already present in the repo" >> $GITHUB_STEP_SUMMARY
+            echo "### Didn't push Docker images because they are already present in the repo" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Existing images:**" >> $GITHUB_STEP_SUMMARY
+            for tag in ${{ steps.check-image.outputs.existing_tags }}; do
+              echo "- \`${{ inputs.image_name }}:$tag\`" >> $GITHUB_STEP_SUMMARY
+            done
           else
-            echo "### Built and pushed Docker image" >> $GITHUB_STEP_SUMMARY
+            echo "### Built and pushed Docker images" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "**Built images:**" >> $GITHUB_STEP_SUMMARY
+            for tag in ${{ steps.check-image.outputs.missing_tags }}; do
+              echo "- \`${{ inputs.image_name }}:$tag\`" >> $GITHUB_STEP_SUMMARY
+            done
+            if [[ -n "${{ steps.check-image.outputs.existing_tags }}" ]]; then
+              echo "" >> $GITHUB_STEP_SUMMARY
+              echo "**Already existing images:**" >> $GITHUB_STEP_SUMMARY
+              for tag in ${{ steps.check-image.outputs.existing_tags }}; do
+                echo "- \`${{ inputs.image_name }}:$tag\`" >> $GITHUB_STEP_SUMMARY
+              done
+            fi
           fi
-          echo "\`${{ inputs.image_name }}:${{ inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
