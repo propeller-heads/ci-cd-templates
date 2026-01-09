@@ -69,7 +69,7 @@ jobs:
             ,arn:aws:secretsmanager:${{ secrets.aws_region }}:${{ secrets.domain_owner }}:secret:${{ inputs.aws_secret }}
           parse-json-secrets: true
 
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
           node-version: 18
@@ -79,7 +79,7 @@ jobs:
           curl -fsSL https://bun.sh/install | bash
           export BUN_INSTALL="$HOME/.bun"
           export PATH="$BUN_INSTALL/bin:$PATH"
-          npm install -g phala@1.0.37
+          npm install -g phala@1.1.2
           phala auth login ${{ env.PHALA_API_KEY }}
           phala auth status
 
@@ -102,18 +102,10 @@ jobs:
           echo DOMAIN=${{ inputs.domain }} >> .env
           echo RUST_LOG=${{ inputs.rust_log }} >> .env
           echo DOCKER_IMAGE_TAG=${{ inputs.image_tag }} >> .env
-          CVM_ID=`phala cvms ls -j | tail -n +2 | jq -r '.[] | select(.hosted.name == "'${{ inputs.cvm_name }}'") | .hosted.app_id'`
-          if [ -z "$CVM_ID" ]; then
-            echo "CVM is not found. Creating..."
-            phala cvms create -c ./docker-compose-dstack.yaml -n ${{ inputs.cvm_name }} -e ./.env
-            sleep 180
-            CVM_ID=`phala cvms ls -j | tail -n +2 | jq -r '.[] | select(.hosted.name == "'${{ inputs.cvm_name }}'") | .hosted.app_id'`
-            GATEWAY_DOMAIN="_.$(phala cvms ls -j | tail -n +2 | jq -r '.[] | select(.hosted.name == "'${{ inputs.cvm_name }}'") | .hosted.app_url' | cut -d. -f2- | cut -d: -f1)"
-            echo GATEWAY_DOMAIN=$GATEWAY_DOMAIN >> .env
-            phala cvms upgrade $CVM_ID -c ./docker-compose-dstack.yaml -e ./.env
-          else
+          if phala cvms get ${{ inputs.cvm_name }}; then
             echo "CVM is found. Upgrading..."
-            GATEWAY_DOMAIN="_.$(phala cvms ls -j | tail -n +2 | jq -r '.[] | select(.hosted.name == "'${{ inputs.cvm_name }}'") | .hosted.app_url' | cut -d. -f2- | cut -d: -f1)"
-            echo GATEWAY_DOMAIN=$GATEWAY_DOMAIN >> .env
-            phala cvms upgrade $CVM_ID -c ./docker-compose-dstack.yaml -e ./.env
+            phala deploy --debug -n ${{ inputs.cvm_name }} -c ./docker-compose-dstack-prod-tmp.yaml -e .env --private-key ${{ env.DEPLOYER_PRIVATE_KEY }} --kms-id kms-eth-prod9 --instance-type tdx.small --cvm-id ${{ inputs.cvm_name }}
+          else
+            echo "CVM is not found. Creating..."
+            phala deploy --debug -n ${{ inputs.cvm_name }} -c ./docker-compose-dstack-prod-tmp.yaml -e .env --private-key ${{ env.DEPLOYER_PRIVATE_KEY }} --kms-id kms-eth-prod9 --instance-type tdx.small
           fi
