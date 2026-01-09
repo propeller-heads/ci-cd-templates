@@ -79,7 +79,7 @@ jobs:
           curl -fsSL https://bun.sh/install | bash
           export BUN_INSTALL="$HOME/.bun"
           export PATH="$BUN_INSTALL/bin:$PATH"
-          npm install -g phala@1.1.1
+          npm install -g phala@1.1.2
           phala auth login ${{ env.PHALA_API_KEY }}
           phala auth status
 
