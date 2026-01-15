@@ -107,8 +107,8 @@ jobs:
           echo RUST_LOG=${{ inputs.rust_log }} >> .env
           echo DOCKER_IMAGE_TAG=${{ inputs.image_tag }} >> .env
 
-          ONCHAIN_KMS_ARGS='--kms-id kms-eth-prod9 --private-key ${{ env.DEPLOYER_PRIVATE_KEY }}'
-          COMMAND='phala deploy --debug -n ${{ inputs.cvm_name }} -c ./docker-compose-dstack.yaml -e .env --instance-type tdx.small ${{ inputs.use_onchain_kms && '$ONCHAIN_KMS_ARGS' || '' }}'
+          ONCHAIN_KMS_ARGS="--kms-id kms-eth-prod9 --private-key ${{ env.DEPLOYER_PRIVATE_KEY }}"
+          COMMAND="phala deploy --debug -n ${{ inputs.cvm_name }} -c ./docker-compose-dstack.yaml -e .env --instance-type tdx.small ${{ inputs.use_onchain_kms && '$ONCHAIN_KMS_ARGS' || '' }}"
 
           if phala cvms get ${{ inputs.cvm_name }}; then
             echo "CVM is found. Upgrading..."
