@@ -48,7 +48,6 @@ jobs:
       - name: Replace release version
         run: |
           yq eval '.${{ inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/${{ inputs.environment }}/versions.yml
-          cat helmwave/${{ inputs.environment }}/versions.yml
 
       - name: Commit & Push changes
         uses: actions-js/push@master
