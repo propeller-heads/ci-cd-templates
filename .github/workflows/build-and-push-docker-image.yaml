@@ -53,11 +53,17 @@ on:
         required: true
       domain_owner:
         required: true
+    outputs:
+      image_digest:
+        description: "Docker image digest for uniquely identifying the image"
+        value: ${{ jobs.build-and-push.outputs.digest }}
 
 jobs:
   build-and-push:
     runs-on: "${{ inputs.runs_on }}"
     timeout-minutes: "${{ inputs.timeout_minutes }}"
+    outputs:
+      digest: ${{ inputs.build_tool == 'kaniko' && steps.build-kaniko.outputs.digest || steps.build-docker.outputs.digest }}
     steps:
       - name: Generate a token
         id: generate-token
@@ -157,6 +163,7 @@ jobs:
           chmod +x src/clearing_algorithm/speedex/bin/propeller_speedex
 
       - name: Build and push docker image with kaniko
+        id: build-kaniko
         if: ${{ inputs.build_tool == 'kaniko' && steps.check-image.outputs.skip_remaining_steps != 'true' }}
         uses: int128/kaniko-action@v1
         with:
@@ -168,12 +175,15 @@ jobs:
             PIP_INDEX_URL=${{ env.PIP_INDEX_URL }}
             ${{ inputs.build_args }}
           #verbosity: DEBUG
+        env:
+          SOURCE_DATE_EPOCH: 0
 
       - name: Set up Docker Buildx
         if: ${{ inputs.build_tool == 'docker' && steps.check-image.outputs.skip_remaining_steps != 'true' }}
         uses: docker/setup-buildx-action@b5ca514318bd6ebac0fb2aedd5d36ec1b5c232a2
 
       - name: Build and push docker image with docker
+        id: build-docker
         if: ${{ inputs.build_tool == 'docker' && steps.check-image.outputs.skip_remaining_steps != 'true' }}
         uses: docker/build-push-action@471d1dc4e07e5cdedd4c2171150001c434f0b7a4
         with:
@@ -185,12 +195,15 @@ jobs:
             ${{ inputs.build_args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+        env:
+          SOURCE_DATE_EPOCH: 0
 
       - name: Add image info to workflow summary
         run: |
           if [[ "${{ steps.check-image.outputs.skip_remaining_steps }}" == "true" ]]; then
-            echo "### Didn't push Docker image because it is already present in the repo" >> $GITHUB_STEP_SUMMARY
+            echo "## Didn't push Docker image because it is already present in the repo" >> $GITHUB_STEP_SUMMARY
           else
-            echo "### Built and pushed Docker image" >> $GITHUB_STEP_SUMMARY
+            echo "## Built and pushed Docker image" >> $GITHUB_STEP_SUMMARY
           fi
           echo "\`${{ inputs.image_name }}:${{ inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "\`${{ inputs.image_name }}:${{ inputs.build_tool == 'kaniko' && steps.build-kaniko.outputs.digest || steps.build-docker.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
