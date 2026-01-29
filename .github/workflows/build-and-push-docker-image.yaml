@@ -185,12 +185,15 @@ jobs:
             ${{ inputs.build_args }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+        env:
+          SOURCE_DATE_EPOCH: 0
 
       - name: Add image info to workflow summary
         run: |
           if [[ "${{ steps.check-image.outputs.skip_remaining_steps }}" == "true" ]]; then
-            echo "### Didn't push Docker image because it is already present in the repo" >> $GITHUB_STEP_SUMMARY
+            echo "## Didn't push Docker image because it is already present in the repo" >> $GITHUB_STEP_SUMMARY
           else
-            echo "### Built and pushed Docker image" >> $GITHUB_STEP_SUMMARY
+            echo "## Built and pushed Docker image" >> $GITHUB_STEP_SUMMARY
           fi
+          echo "\`${{ inputs.image_name }}:${{ inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
           echo "\`${{ inputs.image_name }}:${{ inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
