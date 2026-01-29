@@ -175,6 +175,8 @@ jobs:
             PIP_INDEX_URL=${{ env.PIP_INDEX_URL }}
             ${{ inputs.build_args }}
           #verbosity: DEBUG
+        env:
+          SOURCE_DATE_EPOCH: 0
 
       - name: Set up Docker Buildx
         if: ${{ inputs.build_tool == 'docker' && steps.check-image.outputs.skip_remaining_steps != 'true' }}
@@ -204,4 +206,4 @@ jobs:
             echo "## Built and pushed Docker image" >> $GITHUB_STEP_SUMMARY
           fi
           echo "\`${{ inputs.image_name }}:${{ inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "\`${{ inputs.image_name }}:${{ inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "\`${{ inputs.image_name }}:${{ inputs.build_tool == 'kaniko' && steps.build-kaniko.outputs.digest || steps.build-docker.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
