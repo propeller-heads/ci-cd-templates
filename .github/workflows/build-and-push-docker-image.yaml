@@ -174,7 +174,7 @@ jobs:
         with:
           push: true
           tags: ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
-          dockerfile: ${{ inputs.dockerfile }}
+          file: ${{ inputs.dockerfile }}
           cache: "${{ inputs.cache }}"
           cache-repository: "${{ secrets.repository_url }}/${{ inputs.image_name }}"
           build-args: |
