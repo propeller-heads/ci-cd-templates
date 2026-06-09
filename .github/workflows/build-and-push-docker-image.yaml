@@ -73,7 +73,7 @@ jobs:
     runs-on: "${{ inputs.runs_on }}"
     timeout-minutes: "${{ inputs.timeout_minutes }}"
     outputs:
-      digest: ${{ inputs.build_tool == 'kaniko' && steps.build-kaniko.outputs.digest || steps.build-docker.outputs.digest }}
+      digest: ${{ steps.check-image.outputs.skip_remaining_steps == 'true' && steps.check-image.outputs.existing_digest || (inputs.build_tool == 'kaniko' && steps.build-kaniko.outputs.digest || steps.build-docker.outputs.digest) }}
     steps:
       - name: Generate a token
         id: generate-token
@@ -108,10 +108,11 @@ jobs:
         run: |
           IMAGE="${{ inputs.image_name }}:${{ inputs.image_tag }}"
 
-          # Try to pull the image from the new repository
-          if aws ecr describe-images --registry-id ${{ secrets.domain_owner }} --repository-name ${{ inputs.image_name }} --image-ids imageTag=${{ inputs.image_tag }} 2>/dev/null; then
-            echo "Image $IMAGE already exists in the repository"
+          # Try to fetch the image from the registry and capture its digest
+          if DIGEST=$(aws ecr describe-images --registry-id ${{ secrets.domain_owner }} --repository-name ${{ inputs.image_name }} --image-ids imageTag=${{ inputs.image_tag }} --query 'imageDetails[0].imageDigest' --output text 2>/dev/null) && [ -n "$DIGEST" ] && [ "$DIGEST" != "None" ]; then
+            echo "Image $IMAGE already exists in the repository with digest $DIGEST"
             echo "skip_remaining_steps=true" >> $GITHUB_OUTPUT
+            echo "existing_digest=$DIGEST" >> $GITHUB_OUTPUT
             exit 0
           else
             echo "Image $IMAGE not found, proceeding with build"
@@ -218,4 +219,4 @@ jobs:
             echo "## Built and pushed Docker image" >> $GITHUB_STEP_SUMMARY
           fi
           echo "\`${{ inputs.image_name }}:${{ inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "\`${{ inputs.image_name }}:${{ inputs.build_tool == 'kaniko' && steps.build-kaniko.outputs.digest || steps.build-docker.outputs.digest }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "\`${{ steps.check-image.outputs.skip_remaining_steps == 'true' && steps.check-image.outputs.existing_digest || (inputs.build_tool == 'kaniko' && steps.build-kaniko.outputs.digest || steps.build-docker.outputs.digest) }}\`" >> $GITHUB_STEP_SUMMARY
