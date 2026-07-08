@@ -1,4 +1,4 @@
-name: Promote to production
+name: Promote to environment
 
 on:
   workflow_call:
@@ -19,6 +19,13 @@ on:
         required: true
         type: string
         description: Application name
+      environment:
+        required: false
+        type: string
+        default: dev
+        description: |
+          Target environment in helm-configuration. The workflow updates
+          helmwave/<environment>/versions.yml. Defaults to dev.
     secrets:
       app_id:
         required: true
@@ -49,7 +56,7 @@ jobs:
 
       - name: Replace release version
         run: |
-          yq eval '.${{ inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/dev/versions.yml
+          yq eval '.${{ inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/${{ inputs.environment }}/versions.yml
 
       - name: Commit & Push changes
         uses: actions-js/push@master
