@@ -25,7 +25,9 @@ on:
         default: dev
         description: |
           Target environment in helm-configuration. The workflow updates
-          helmwave/<environment>/versions.yml. Defaults to dev.
+          helmwave/<environment>/versions.yml. Must be "dev" or "staging"
+          — prod promotion is not allowed via this workflow; use
+          promote-to-production.yaml for prod.
     secrets:
       app_id:
         required: true
@@ -36,6 +38,13 @@ jobs:
   promote-to-dev:
     runs-on: "${{ inputs.runs_on }}"
     steps:
+      - name: Validate environment
+        run: |
+          case "${{ inputs.environment }}" in
+            dev|staging) ;;
+            *) echo "::error::environment must be 'dev' or 'staging', got '${{ inputs.environment }}'" && exit 1 ;;
+          esac
+
       - name: Generate a token
         id: generate-token
         uses: getsentry/action-github-app-token@v2
