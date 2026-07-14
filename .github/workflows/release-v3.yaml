@@ -1,0 +1,101 @@
+name: Release v3 (release-please)
+
+# PR-based release flow built on release-please. Unlike release-v2 (semantic-release +
+# @semantic-release/git, which pushes the version bump straight to main), v3 opens a
+# release PR for human review and never commits to main.
+#
+# release-please handles both phases in a single run, triggered by the caller's push to
+# main:
+#   * normal push        -> create or update the release PR (version bump + CHANGELOG +
+#                           Cargo.lock, computed from Conventional Commits)
+#   * release PR merged   -> create the tag + GitHub Release, which triggers the repo's
+#                           existing `release: published` publish workflows
+#
+# It edits manifests/lockfiles directly (no cargo/npm build), so no repository or
+# dependency code runs here and the App token is never exposed to a build script.
+#
+# Each consumer repo supplies its own `release-please-config.json` and
+# `.release-please-manifest.json`. The App token is used (not the default GITHUB_TOKEN)
+# so the release PR gets CI and the published release triggers downstream workflows —
+# events created with GITHUB_TOKEN do not trigger other workflows.
+#
+# The App token only opens/updates the release PR and creates the tag/Release — it never
+# commits to main — so the App can be removed from the main-branch ruleset bypass.
+
+on:
+  workflow_call:
+    inputs:
+      runs_on:
+        required: false
+        type: string
+        default: ubuntu-latest
+      target_branch:
+        required: false
+        type: string
+        default: main
+      config_file:
+        required: false
+        type: string
+        default: release-please-config.json
+      manifest_file:
+        required: false
+        type: string
+        default: .release-please-manifest.json
+    secrets:
+      app_id:
+        required: true
+      app_private_key:
+        required: true
+    outputs:
+      releases_created:
+        description: "true if any release was created (a release PR was merged this run)."
+        value: ${{ jobs.release-please.outputs.releases_created }}
+      release_created:
+        description: "true if the root component was released."
+        value: ${{ jobs.release-please.outputs.release_created }}
+      tag_name:
+        description: The tag of the created release (empty when no release).
+        value: ${{ jobs.release-please.outputs.tag_name }}
+      version:
+        description: The released version (empty when no release).
+        value: ${{ jobs.release-please.outputs.version }}
+      paths_released:
+        description: JSON array of package paths that were released.
+        value: ${{ jobs.release-please.outputs.paths_released }}
+
+# The default GITHUB_TOKEN is unused: every write goes through the repo-scoped App token.
+permissions:
+  contents: read
+
+jobs:
+  release-please:
+    name: Release Please
+    runs-on: ${{ inputs.runs_on }}
+    outputs:
+      releases_created: ${{ steps.release.outputs.releases_created }}
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+      paths_released: ${{ steps.release.outputs.paths_released }}
+    steps:
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3.2.0
+        with:
+          app-id: ${{ secrets.app_id }}
+          private-key: ${{ secrets.app_private_key }}
+          # Scoped to this repository only (default) and to the minimum permissions
+          # release-please needs: contents (bump/tag/release), pull-requests (release PR),
+          # issues (manage the autorelease labels).
+          permission-contents: write
+          permission-pull-requests: write
+          permission-issues: write
+
+      - name: Release Please
+        id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7  # v5.0.0
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          config-file: ${{ inputs.config_file }}
+          manifest-file: ${{ inputs.manifest_file }}
+          target-branch: ${{ inputs.target_branch }}
