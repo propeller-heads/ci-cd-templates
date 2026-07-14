@@ -1,0 +1,255 @@
+name: Release v3 (PR-based)
+
+# PR-based release flow. Unlike release-v2 (which pushes the version bump + CHANGELOG
+# straight to main via semantic-release + @semantic-release/git), v3 never writes to main.
+#
+# Phase A (prepare) — runs on a normal push to main:
+#   * computes the next version with `semantic-release --dry-run`
+#   * closes any stale open release PR (label: autorelease) and deletes its branch
+#   * recreates the bump + CHANGELOG on an `autorelease/v<version>` branch, reusing the
+#     repo's own `@semantic-release/exec` prepareCmd (no duplication)
+#   * opens a fresh release PR for human review
+#
+# Phase B (publish) — runs when the release commit (`chore(release): <version>`) lands on
+# main via the merged release PR:
+#   * creates the tag + GitHub Release, which triggers the repo's existing
+#     `release: published` publish workflows (crates.io, npm, binaries, images)
+#
+# The App token only ever pushes to `autorelease/*` branches and opens/closes PRs — it
+# never commits to main — so the App can be removed from the main-branch ruleset bypass.
+
+on:
+  workflow_call:
+    inputs:
+      runs_on:
+        required: false
+        type: string
+        default: ubuntu-latest
+      timeout_minutes:
+        required: false
+        type: number
+        default: 30
+      node_version:
+        required: false
+        type: string
+        default: "20.11.1"
+      python_version:
+        required: false
+        type: string
+        default: "3.12"
+      args:
+        description: Extra flags forwarded to `semantic-release --dry-run` (e.g. --tag-format).
+        required: false
+        type: string
+        default: ""
+      tag_prefix:
+        description: Prefix prepended to the version to form the git tag (e.g. keygen-v).
+        required: false
+        type: string
+        default: ""
+    secrets:
+      app_id:
+        required: true
+      app_private_key:
+        required: true
+    outputs:
+      next_release_version:
+        description: The released version (publish) or the pending version (prepare); empty if no release.
+        value: ${{ jobs.release.outputs.next_release_version }}
+      released:
+        description: "true when this run published a release (Phase B)."
+        value: ${{ jobs.release.outputs.released }}
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  release:
+    name: Release
+    runs-on: ${{ inputs.runs_on }}
+    timeout-minutes: ${{ inputs.timeout_minutes }}
+    outputs:
+      next_release_version: ${{ steps.version.outputs.value }}
+      released: ${{ steps.detect.outputs.phase == 'publish' }}
+    steps:
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3.2.0
+        with:
+          app-id: ${{ secrets.app_id }}
+          private-key: ${{ secrets.app_private_key }}
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
+
+      - name: Detect release phase
+        id: detect
+        env:
+          BEFORE: ${{ github.event.before }}
+          AFTER: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          # A push whose new commits include a `chore(release): <version>` commit is the
+          # merge of a release PR -> publish. Anything else -> prepare a release PR.
+          if [ -z "${BEFORE:-}" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ]; then
+            msgs=$(git log -1 --format=%s "$AFTER")
+          else
+            msgs=$(git log --format=%s "${BEFORE}..${AFTER}")
+          fi
+          marker=$(printf '%s\n' "$msgs" | grep -m1 '^chore(release): ' || true)
+          if [ -n "$marker" ]; then
+            version=$(printf '%s' "$marker" | sed -E 's/^chore\(release\): ([^ ]+).*/\1/')
+            {
+              echo "phase=publish"
+              echo "version=$version"
+            } >> "$GITHUB_OUTPUT"
+            echo "Release commit detected (version $version) -> publish phase"
+          else
+            echo "phase=prepare" >> "$GITHUB_OUTPUT"
+            echo "No release commit in push -> prepare phase"
+          fi
+
+      # ───────────────────────── Phase B: publish ─────────────────────────
+      - name: Create tag and GitHub Release
+        if: steps.detect.outputs.phase == 'publish'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          VERSION: ${{ steps.detect.outputs.version }}
+          TAG_PREFIX: ${{ inputs.tag_prefix }}
+        run: |
+          set -euo pipefail
+          tag="${TAG_PREFIX}${VERSION}"
+          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            echo "Tag ${tag} already exists; nothing to publish."
+            exit 0
+          fi
+          notes_file="$(mktemp)"
+          if [ -f CHANGELOG.md ]; then
+            # Grab the newest version section (first version header up to the next one).
+            awk '/^#{1,3} \[?[0-9]/{n++; if (n>1) exit} n>=1{print}' CHANGELOG.md > "$notes_file" || true
+          fi
+          if [ -s "$notes_file" ]; then
+            gh release create "$tag" --target main --title "$tag" --notes-file "$notes_file"
+          else
+            gh release create "$tag" --target main --title "$tag" --generate-notes
+          fi
+          echo "Published release ${tag}"
+
+      # ───────────────────────── Phase A: prepare ─────────────────────────
+      - name: Setup Node.js
+        if: steps.detect.outputs.phase == 'prepare'
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
+        with:
+          node-version: ${{ inputs.node_version }}
+
+      - name: Setup Python
+        if: steps.detect.outputs.phase == 'prepare'
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1  # v6.3.0
+        with:
+          python-version: ${{ inputs.python_version }}
+
+      - name: Install tooling
+        if: steps.detect.outputs.phase == 'prepare'
+        run: |
+          set -euo pipefail
+          pip install toml-cli
+          npm install --save-dev \
+            semver@7.6.3 \
+            semantic-release@23.0.2 \
+            @semantic-release/changelog@6.0.3 \
+            @semantic-release/git@10.0.1 \
+            @semantic-release/exec@6.0.3 \
+            conventional-changelog-conventionalcommits@7.0.2 \
+            conventional-changelog-eslint@5.0.0 \
+            conventional-changelog-cli@5.0.0 \
+            --legacy-peer-deps
+
+      - name: Compute next version (dry-run)
+        id: dryrun
+        if: steps.detect.outputs.phase == 'prepare'
+        env:
+          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          # The repo's release.config.js verifyReleaseCmd writes VERIFY_RELEASE_VERSION to
+          # this step's $GITHUB_OUTPUT. It stays empty when no release is warranted.
+          npx semantic-release --dry-run ${{ inputs.args }}
+
+      - name: Open release PR
+        if: steps.detect.outputs.phase == 'prepare' && steps.dryrun.outputs.VERIFY_RELEASE_VERSION != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          VERSION: ${{ steps.dryrun.outputs.VERIFY_RELEASE_VERSION }}
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          # 1. Close any stale open release PRs (and delete their branches) so at most one
+          #    release PR exists at a time. Done before pushing the new branch to avoid
+          #    deleting the branch we are about to create.
+          gh label create autorelease --color FBCA04 --description "Automated release PR" --force >/dev/null 2>&1 || true
+          for n in $(gh pr list --label autorelease --state open --json number --jq '.[].number'); do
+            echo "Closing stale release PR #${n}"
+            gh pr close "$n" --delete-branch || true
+          done
+
+          # 2. Recreate the version bump + CHANGELOG on a fresh branch, reusing the repo's
+          #    own prepareCmd (extracted from release.config.js — single source of truth).
+          branch="autorelease/v${VERSION}"
+          git switch -c "$branch"
+          if [ -f release.config.js ]; then
+            # The node script intentionally contains the literal JS string
+            # "${nextRelease.version}" (the placeholder to substitute), not a shell var.
+            # shellcheck disable=SC2016
+            bump="$(VERSION="$VERSION" node -e '
+              const cfg = require(process.cwd() + "/release.config.js");
+              const v = process.env.VERSION;
+              const exec = (cfg.plugins || []).find((p) => Array.isArray(p) && p[0] === "@semantic-release/exec");
+              let c = exec && exec[1] && exec[1].prepareCmd ? exec[1].prepareCmd : "";
+              if (Array.isArray(c)) { c = c.join(" && "); }
+              process.stdout.write(String(c).split("${nextRelease.version}").join(v));
+            ')"
+            if [ -n "$bump" ]; then
+              echo "Applying repo prepare command"
+              bash -c "$bump"
+            fi
+          fi
+
+          # 3. Generate release notes with the same preset semantic-release uses and
+          #    prepend them to CHANGELOG.md.
+          npx conventional-changelog -p conventionalcommits -r 1 > /tmp/notes.md || true
+          if [ -s /tmp/notes.md ]; then
+            touch CHANGELOG.md
+            cat /tmp/notes.md CHANGELOG.md > /tmp/changelog.new
+            mv /tmp/changelog.new CHANGELOG.md
+          fi
+
+          # 4. Commit (no [skip ci] — the merge must trigger the publish phase) and push.
+          git add -A
+          git commit -m "chore(release): ${VERSION}"
+          git push -f origin "$branch"
+
+          # 5. Open the fresh release PR.
+          body_args=(--body "Automated release for version ${VERSION}. Merging this PR tags the release and triggers publishing.")
+          if [ -s /tmp/notes.md ]; then
+            body_args=(--body-file /tmp/notes.md)
+          fi
+          gh pr create --base main --head "$branch" \
+            --title "chore(release): ${VERSION}" \
+            --label autorelease \
+            "${body_args[@]}"
+
+      - name: Resolve output version
+        id: version
+        run: |
+          set -euo pipefail
+          if [ "${{ steps.detect.outputs.phase }}" = "publish" ]; then
+            echo "value=${{ steps.detect.outputs.version }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "value=${{ steps.dryrun.outputs.VERIFY_RELEASE_VERSION }}" >> "$GITHUB_OUTPUT"
+          fi
