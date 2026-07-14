@@ -15,6 +15,16 @@ name: Release v3 (PR-based)
 #   * creates the tag + GitHub Release, which triggers the repo's existing
 #     `release: published` publish workflows (crates.io, npm, binaries, images)
 #
+# Token handling (defence in depth — v3 only runs on trusted `push: main`, never fork PRs):
+#   * The App token is scoped to this repository only (create-github-app-token default) and
+#     to the minimum permissions needed (contents + pull-requests write).
+#   * It is minted AFTER all repository code has run, and is exposed only to the git-push /
+#     PR / release steps — never to the `semantic-release`/`cargo`/`npm` steps that execute
+#     repo and dependency code. Those use the default GITHUB_TOKEN (dry-run) or no token.
+#   * checkout uses persist-credentials: false so no token is left on disk during a build.
+#   * The App token is required for push/PR/release specifically because events created with
+#     the default GITHUB_TOKEN do not trigger the downstream publish workflows.
+#
 # The App token only ever pushes to `autorelease/*` branches and opens/closes PRs — it
 # never commits to main — so the App can be removed from the main-branch ruleset bypass.
 
@@ -60,9 +70,10 @@ on:
         description: "true when this run published a release (Phase B)."
         value: ${{ jobs.release.outputs.released }}
 
+# For the default GITHUB_TOKEN, used only by the semantic-release dry-run (version compute).
+# The privileged operations use the separately-minted, repo-scoped App token below.
 permissions:
   contents: write
-  pull-requests: write
 
 jobs:
   release:
@@ -73,18 +84,13 @@ jobs:
       next_release_version: ${{ steps.version.outputs.value }}
       released: ${{ steps.detect.outputs.phase == 'publish' }}
     steps:
-      - name: Generate app token
-        id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3.2.0
-        with:
-          app-id: ${{ secrets.app_id }}
-          private-key: ${{ secrets.app_private_key }}
-
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           fetch-depth: 0
-          token: ${{ steps.app-token.outputs.token }}
+          # Do not persist any credential on disk: repo/dependency code (cargo, npm) runs
+          # in later steps and must not be able to read a token from .git/config.
+          persist-credentials: false
 
       - name: Detect release phase
         id: detect
@@ -113,33 +119,7 @@ jobs:
             echo "No release commit in push -> prepare phase"
           fi
 
-      # ───────────────────────── Phase B: publish ─────────────────────────
-      - name: Create tag and GitHub Release
-        if: steps.detect.outputs.phase == 'publish'
-        env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
-          VERSION: ${{ steps.detect.outputs.version }}
-          TAG_PREFIX: ${{ inputs.tag_prefix }}
-        run: |
-          set -euo pipefail
-          tag="${TAG_PREFIX}${VERSION}"
-          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
-            echo "Tag ${tag} already exists; nothing to publish."
-            exit 0
-          fi
-          notes_file="$(mktemp)"
-          if [ -f CHANGELOG.md ]; then
-            # Grab the newest version section (first version header up to the next one).
-            awk '/^#{1,3} \[?[0-9]/{n++; if (n>1) exit} n>=1{print}' CHANGELOG.md > "$notes_file" || true
-          fi
-          if [ -s "$notes_file" ]; then
-            gh release create "$tag" --target main --title "$tag" --notes-file "$notes_file"
-          else
-            gh release create "$tag" --target main --title "$tag" --generate-notes
-          fi
-          echo "Published release ${tag}"
-
-      # ───────────────────────── Phase A: prepare ─────────────────────────
+      # ─────────── Phase A: compute + build the release branch (no App token) ───────────
       - name: Setup Node.js
         if: steps.detect.outputs.phase == 'prepare'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020  # v7.0.0
@@ -172,36 +152,30 @@ jobs:
         id: dryrun
         if: steps.detect.outputs.phase == 'prepare'
         env:
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          # Default repo-scoped token, not the App key — this step executes the repo's
+          # release.config.js. It stays empty in VERIFY_RELEASE_VERSION when no release.
+          GITHUB_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # The repo's release.config.js verifyReleaseCmd writes VERIFY_RELEASE_VERSION to
-          # this step's $GITHUB_OUTPUT. It stays empty when no release is warranted.
           npx semantic-release --dry-run ${{ inputs.args }}
 
-      - name: Open release PR
+      - name: Build release branch
+        id: build
         if: steps.detect.outputs.phase == 'prepare' && steps.dryrun.outputs.VERIFY_RELEASE_VERSION != ''
         env:
-          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          # No token in this step: it runs repo + dependency code (cargo, npm scripts).
           VERSION: ${{ steps.dryrun.outputs.VERIFY_RELEASE_VERSION }}
         run: |
           set -euo pipefail
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-          # 1. Close any stale open release PRs (and delete their branches) so at most one
-          #    release PR exists at a time. Done before pushing the new branch to avoid
-          #    deleting the branch we are about to create.
-          gh label create autorelease --color FBCA04 --description "Automated release PR" --force >/dev/null 2>&1 || true
-          for n in $(gh pr list --label autorelease --state open --json number --jq '.[].number'); do
-            echo "Closing stale release PR #${n}"
-            gh pr close "$n" --delete-branch || true
-          done
-
-          # 2. Recreate the version bump + CHANGELOG on a fresh branch, reusing the repo's
-          #    own prepareCmd (extracted from release.config.js — single source of truth).
           branch="autorelease/v${VERSION}"
+          echo "branch=$branch" >> "$GITHUB_OUTPUT"
           git switch -c "$branch"
+
+          # Reuse the repo's own version bump, extracted from release.config.js so there is
+          # a single source of truth.
           if [ -f release.config.js ]; then
             # The node script intentionally contains the literal JS string
             # "${nextRelease.version}" (the placeholder to substitute), not a shell var.
@@ -220,8 +194,7 @@ jobs:
             fi
           fi
 
-          # 3. Generate release notes with the same preset semantic-release uses and
-          #    prepend them to CHANGELOG.md.
+          # Release notes via the same preset semantic-release uses; prepend to CHANGELOG.
           npx conventional-changelog -p conventionalcommits -r 1 > /tmp/notes.md || true
           if [ -s /tmp/notes.md ]; then
             touch CHANGELOG.md
@@ -229,20 +202,79 @@ jobs:
             mv /tmp/changelog.new CHANGELOG.md
           fi
 
-          # 4. Commit (no [skip ci] — the merge must trigger the publish phase) and push.
+          # Commit locally (no token needed). No [skip ci]: the merge must trigger publish.
           git add -A
           git commit -m "chore(release): ${VERSION}"
-          git push -f origin "$branch"
 
-          # 5. Open the fresh release PR.
+      # ─────────── Mint the App token only after all repo code has run ───────────
+      - name: Generate app token
+        id: app-token
+        if: steps.detect.outputs.phase == 'publish' || steps.dryrun.outputs.VERIFY_RELEASE_VERSION != ''
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1  # v3.2.0
+        with:
+          app-id: ${{ secrets.app_id }}
+          private-key: ${{ secrets.app_private_key }}
+          # Scoped to this repository only (default) and to the minimum permissions needed.
+          permission-contents: write
+          permission-pull-requests: write
+
+      # ─────────── Phase A: open the release PR (App token, no repo code) ───────────
+      - name: Open release PR
+        if: steps.detect.outputs.phase == 'prepare' && steps.dryrun.outputs.VERIFY_RELEASE_VERSION != ''
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          TOKEN: ${{ steps.app-token.outputs.token }}
+          VERSION: ${{ steps.dryrun.outputs.VERIFY_RELEASE_VERSION }}
+          BRANCH: ${{ steps.build.outputs.branch }}
+          REPO: ${{ github.repository }}
+        run: |
+          set -euo pipefail
+          # Close any stale open release PRs (and delete their branches) first, so we never
+          # delete the branch we are about to push.
+          gh label create autorelease --color FBCA04 --description "Automated release PR" --force >/dev/null 2>&1 || true
+          for n in $(gh pr list --label autorelease --state open --json number --jq '.[].number'); do
+            echo "Closing stale release PR #${n}"
+            gh pr close "$n" --delete-branch || true
+          done
+
+          # Push the release branch with the App token via an explicit remote (no persisted
+          # credentials). The token is masked in logs.
+          git push -f "https://x-access-token:${TOKEN}@github.com/${REPO}.git" "HEAD:refs/heads/${BRANCH}"
+
           body_args=(--body "Automated release for version ${VERSION}. Merging this PR tags the release and triggers publishing.")
           if [ -s /tmp/notes.md ]; then
             body_args=(--body-file /tmp/notes.md)
           fi
-          gh pr create --base main --head "$branch" \
+          gh pr create --base main --head "$BRANCH" \
             --title "chore(release): ${VERSION}" \
             --label autorelease \
             "${body_args[@]}"
+
+      # ─────────── Phase B: publish (App token, no repo code) ───────────
+      - name: Create tag and GitHub Release
+        if: steps.detect.outputs.phase == 'publish'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          VERSION: ${{ steps.detect.outputs.version }}
+          TAG_PREFIX: ${{ inputs.tag_prefix }}
+        run: |
+          set -euo pipefail
+          tag="${TAG_PREFIX}${VERSION}"
+          if git rev-parse -q --verify "refs/tags/${tag}" >/dev/null; then
+            echo "Tag ${tag} already exists; nothing to publish."
+            exit 0
+          fi
+          notes_file="$(mktemp)"
+          if [ -f CHANGELOG.md ]; then
+            # Grab the newest version section (first version header up to the next one).
+            awk '/^#{1,3} \[?[0-9]/{n++; if (n>1) exit} n>=1{print}' CHANGELOG.md > "$notes_file" || true
+          fi
+          if [ -s "$notes_file" ]; then
+            gh release create "$tag" --target main --title "$tag" --notes-file "$notes_file"
+          else
+            gh release create "$tag" --target main --title "$tag" --generate-notes
+          fi
+          echo "Published release ${tag}"
 
       - name: Resolve output version
         id: version
