@@ -12,26 +12,27 @@ on:
         type: number
         default: 30
     secrets:
+      # Deprecated: the title check now uses the default GITHUB_TOKEN. Kept optional so
+      # existing callers that still pass them do not break. Remove from callers, then
+      # delete these.
       app_id:
-        required: true
+        required: false
       app_private_key:
-        required: true
+        required: false
+
+permissions:
+  contents: read
+  pull-requests: read
 
 jobs:
   main:
     runs-on: "${{ inputs.runs_on }}"
+    timeout-minutes: ${{ inputs.timeout_minutes }}
     steps:
-      - name: Generate a token
-        id: generate-token
-        uses: getsentry/action-github-app-token@v2
-        with:
-          app_id: ${{ secrets.app_id }}
-          private_key: ${{ secrets.app_private_key }}
-
       - name: Validate PR title
-        uses: amannn/action-semantic-pull-request@v5
+        uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50  # v6.1.1
         env:
-          GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
+          GITHUB_TOKEN: ${{ github.token }}
         with:
           types: |
             breaking
