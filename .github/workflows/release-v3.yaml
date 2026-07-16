@@ -122,6 +122,8 @@ jobs:
           persist-credentials: false
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@888c2e1ea69ab0d4330cbf0af1ecc7b68f368cc1  # stable
+        with:
+          toolchain: stable
       - name: release-plz release-pr
         uses: release-plz/action@2eb1d8bcb770b4c48ccfaad919734b38b51958c9  # v0.5.131
         with:
@@ -157,6 +159,8 @@ jobs:
           persist-credentials: false
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@888c2e1ea69ab0d4330cbf0af1ecc7b68f368cc1  # stable
+        with:
+          toolchain: stable
       - name: release-plz release
         id: rp
         uses: release-plz/action@2eb1d8bcb770b4c48ccfaad919734b38b51958c9  # v0.5.131
