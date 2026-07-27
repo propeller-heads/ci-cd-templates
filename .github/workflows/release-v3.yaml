@@ -115,6 +115,18 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
           permission-issues: write
+      # release-plz checks old commits out in a temp clone to diff each package. If any commit
+      # in that range holds a file that .gitattributes marks `filter=lfs` but that was committed
+      # as raw content, the clean filter rewrites it to a pointer on every status, so the file
+      # reads as modified and release-plz cannot check back out to HEAD. Passing blobs through
+      # untouched keeps the tree clean; release-plz diffs packaged files, not LFS content.
+      - name: Pass Git LFS blobs through unfiltered
+        run: |
+          set -euo pipefail
+          git config --global filter.lfs.smudge cat
+          git config --global filter.lfs.clean cat
+          git config --global filter.lfs.process ""
+          git config --global filter.lfs.required false
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
@@ -152,6 +164,18 @@ jobs:
           permission-contents: write
           permission-pull-requests: write
           permission-issues: write
+      # release-plz checks old commits out in a temp clone to diff each package. If any commit
+      # in that range holds a file that .gitattributes marks `filter=lfs` but that was committed
+      # as raw content, the clean filter rewrites it to a pointer on every status, so the file
+      # reads as modified and release-plz cannot check back out to HEAD. Passing blobs through
+      # untouched keeps the tree clean; release-plz diffs packaged files, not LFS content.
+      - name: Pass Git LFS blobs through unfiltered
+        run: |
+          set -euo pipefail
+          git config --global filter.lfs.smudge cat
+          git config --global filter.lfs.clean cat
+          git config --global filter.lfs.process ""
+          git config --global filter.lfs.required false
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
