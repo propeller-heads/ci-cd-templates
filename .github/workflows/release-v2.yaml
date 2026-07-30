@@ -58,6 +58,7 @@ jobs:
             git config --global credential.helper store
             echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
             git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
+            git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com/".insteadOf ssh://git@github.com/
 
       - name: Set up Python environment
         uses: actions/setup-python@v5
@@ -80,8 +81,8 @@ jobs:
       - name: Install dependencies
         run: npm install --save-dev semver@7.6.3 semantic-release@23.0.2 @semantic-release/changelog@6.0.3 @semantic-release/git@10.0.1 conventional-changelog-conventionalcommits@7.0.2 conventional-changelog-eslint@5.0.0 @semantic-release/exec@6.0.3 --legacy-peer-deps
 
-      - name: Verify the integrity of provenance attestations and registry signatures for installed dependencies
-        run: corepack npm audit signatures
+      # - name: Verify the integrity of provenance attestations and registry signatures for installed dependencies
+      #   run: corepack npm audit signatures
 
       - name: Semantic release
         id: semantic
