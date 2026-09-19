@@ -119,7 +119,7 @@ jobs:
       # in that range holds a file that .gitattributes marks `filter=lfs` but that was committed
       # as raw content, the clean filter rewrites it to a pointer on every status, so the file
       # reads as modified and release-plz cannot check back out to HEAD. Passing blobs through
-      # untouched keeps the tree clean; release-plz diffs packaged files, not LFS content.
+      # untouched keeps the tree clean; release-plz diffs tracked sources, not LFS content.
       - name: Pass Git LFS blobs through unfiltered
         run: |
           set -euo pipefail
@@ -137,7 +137,7 @@ jobs:
         with:
           toolchain: stable
       - name: release-plz release-pr
-        uses: release-plz/action@2eb1d8bcb770b4c48ccfaad919734b38b51958c9  # v0.5.131
+        uses: release-plz/action@d6c56271d640b6c1b61d1e00593641c400a9f4bd  # v0.5.138
         with:
           command: release-pr
           config: ${{ inputs.release_plz_config }}
@@ -168,7 +168,7 @@ jobs:
       # in that range holds a file that .gitattributes marks `filter=lfs` but that was committed
       # as raw content, the clean filter rewrites it to a pointer on every status, so the file
       # reads as modified and release-plz cannot check back out to HEAD. Passing blobs through
-      # untouched keeps the tree clean; release-plz diffs packaged files, not LFS content.
+      # untouched keeps the tree clean; release-plz diffs tracked sources, not LFS content.
       - name: Pass Git LFS blobs through unfiltered
         run: |
           set -euo pipefail
@@ -187,7 +187,7 @@ jobs:
           toolchain: stable
       - name: release-plz release
         id: rp
-        uses: release-plz/action@2eb1d8bcb770b4c48ccfaad919734b38b51958c9  # v0.5.131
+        uses: release-plz/action@d6c56271d640b6c1b61d1e00593641c400a9f4bd  # v0.5.138
         with:
           command: release
           config: ${{ inputs.release_plz_config }}
