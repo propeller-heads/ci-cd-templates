@@ -25,6 +25,13 @@ on:
         required: true
         type: string
         description: Environment name
+      skip_unchanged:
+        required: false
+        type: boolean
+        default: false
+        description: >-
+          Deploy only releases whose manifests changed (helmwave --skip-unchanged). If a release
+          in the plan is not in the `deployed` state, the run deploys everything instead.
     secrets:
       app_id:
         required: true
@@ -87,13 +94,46 @@ jobs:
         env:
           WORKFLOW_STATUS: ":large_blue_square: In Progress"
 
+      # With skip_unchanged, helmwave compares each release with the manifest stored in its latest
+      # Helm revision, whatever the state of that revision. It does not look at the objects in the
+      # cluster. So it would skip a release that failed, is pending, or is stuck uninstalling, if
+      # its manifest did not change. A full deploy retried such releases, so this keeps that: when
+      # one release of the plan is not `deployed`, the run deploys everything.
       - name: Deploy app uses helmwave
-        run: |
-          cd helmwave/${{ inputs.environment }}
-          helmwave yml
-          helmwave up --build
         env:
           HELMWAVE_KUBEDOG_ENABLED: true
+          SKIP_UNCHANGED: ${{ inputs.skip_unchanged }}
+        run: |
+          set -euo pipefail
+          cd "helmwave/${ENVIRONMENT}"
+          helmwave yml
+
+          if [ "${SKIP_UNCHANGED}" != "true" ]; then
+            helmwave up --build
+            exit 0
+          fi
+
+          # Latest Helm revision of every release in the plan; print those not `deployed`. If the
+          # check itself fails, deploy everything, as before this option existed.
+          if ! not_deployed="$(
+            yq '.releases[] | select(.namespace != null) | .namespace' helmwave.yml | sort -u \
+              | while read -r ns; do
+                  kubectl get secrets --namespace "${ns}" --selector owner=helm --output json \
+                    | jq -r --arg ns "${ns}" '[.items[].metadata.labels]
+                        | group_by(.name)[] | max_by(.version | tonumber)
+                        | select(.status != "deployed") | "\(.name)@\($ns) \(.status)"'
+                done \
+              | awk 'NR == FNR { plan[$1] = 1; next } ($1 in plan)' \
+                  <(yq '.releases[] | .name + "@" + .namespace' helmwave.yml) -
+          )"; then
+            echo "::warning::Could not read the Helm release states, deploying everything"
+            helmwave up --build
+          elif [ -n "${not_deployed}" ]; then
+            echo "::warning::Releases not in the deployed state, deploying everything: $(echo "${not_deployed}" | tr '\n' ',')"
+            helmwave up --build
+          else
+            helmwave up --build --skip-unchanged --diff-mode live
+          fi
 
       - name: Slack Notification
         if: success()
