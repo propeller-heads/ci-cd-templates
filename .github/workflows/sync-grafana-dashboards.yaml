@@ -1,0 +1,124 @@
+name: Sync Grafana dashboards
+
+# Pushes Grafana dashboard JSON files from the calling repository to Grafana.
+#
+# On a push event, only the dashboards that were added or changed between
+# `github.event.before` and `github.sha` are pushed, and the job is a no-op when
+# nothing under `dashboards_path` changed. On any other event (e.g.
+# workflow_dispatch), or when the push has no previous commit, every dashboard
+# under `dashboards_path` is pushed.
+#
+# Each file must be a dashboard model (as exported from the Grafana UI "Export
+# as JSON") with a fixed `uid`, so that a push replaces the existing dashboard
+# instead of creating a copy. Edits made in the Grafana UI are overwritten the
+# next time the file changes. Deleting a file does not delete the dashboard.
+
+on:
+  workflow_call:
+    inputs:
+      dashboards_path:
+        required: true
+        type: string
+        description: Directory in the calling repository holding the dashboard JSON files.
+      folder_uid:
+        required: false
+        type: string
+        default: ""
+        description: UID of the Grafana folder to put the dashboards in. Empty means "General".
+      grafana_url:
+        required: false
+        type: string
+        default: https://grafana.propellerheads.xyz
+      runs_on:
+        required: false
+        type: string
+        default: ubuntu-latest
+    secrets:
+      grafana_token:
+        required: true
+        description: Grafana service account token with dashboards:write on the target folder.
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-grafana-dashboards-${{ github.repository }}-${{ inputs.dashboards_path }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: "${{ inputs.runs_on }}"
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
+        with:
+          # Full history without blobs, so the diff against the previous push commit works.
+          fetch-depth: 0
+          filter: blob:none
+          persist-credentials: false
+
+      - name: Find dashboards to sync
+        id: changes
+        env:
+          DASHBOARDS_PATH: ${{ inputs.dashboards_path }}
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          DASHBOARDS_PATH="${DASHBOARDS_PATH%/}"
+          if [ ! -d "$DASHBOARDS_PATH" ]; then
+            echo "::error::dashboards_path '$DASHBOARDS_PATH' is not a directory in this repository"
+            exit 1
+          fi
+
+          if [ "$EVENT_NAME" = "push" ] && [ -n "$BEFORE" ] \
+            && [ "$BEFORE" != "0000000000000000000000000000000000000000" ] \
+            && git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "Pushing dashboards changed in $BEFORE..$SHA"
+            git diff --name-only --diff-filter=AMR "$BEFORE" "$SHA" -- "$DASHBOARDS_PATH/**.json" \
+              > "$RUNNER_TEMP/dashboards.txt"
+          else
+            echo "No previous push commit; pushing every dashboard under $DASHBOARDS_PATH"
+            git ls-files -- "$DASHBOARDS_PATH/**.json" > "$RUNNER_TEMP/dashboards.txt"
+          fi
+
+          count=$(wc -l < "$RUNNER_TEMP/dashboards.txt" | tr -d ' ')
+          echo "count=$count" >> "$GITHUB_OUTPUT"
+          if [ "$count" -eq 0 ]; then
+            echo "No dashboard changed under $DASHBOARDS_PATH; nothing to sync."
+          else
+            cat "$RUNNER_TEMP/dashboards.txt"
+          fi
+
+      - name: Push dashboards to Grafana
+        if: steps.changes.outputs.count != '0'
+        env:
+          GRAFANA_URL: ${{ inputs.grafana_url }}
+          GRAFANA_TOKEN: ${{ secrets.grafana_token }}
+          FOLDER_UID: ${{ inputs.folder_uid }}
+          MESSAGE: "${{ github.repository }}@${{ github.sha }}"
+        run: |
+          set -euo pipefail
+          failed=0
+          while IFS= read -r file; do
+            uid=$(jq -er '.uid // empty' "$file") || {
+              echo "::error file=$file::dashboard has no 'uid'; set a fixed uid so updates replace the dashboard"
+              failed=1
+              continue
+            }
+            payload=$(jq -c --arg folder "$FOLDER_UID" --arg msg "$MESSAGE" \
+              '{dashboard: del(.id), folderUid: $folder, overwrite: true, message: $msg}' "$file")
+            if response=$(curl -sS --fail-with-body -m 30 -X POST "${GRAFANA_URL%/}/api/dashboards/db" \
+              -H "Authorization: Bearer $GRAFANA_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data-binary "$payload"); then
+              echo "$file -> $(jq -r '"\(.url) (version \(.version))"' <<< "$response")"
+              echo "- \`$file\` → [$uid](${GRAFANA_URL%/}$(jq -r .url <<< "$response"))" >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::error file=$file::Grafana rejected dashboard '$uid': $response"
+              failed=1
+            fi
+          done < "$RUNNER_TEMP/dashboards.txt"
+          exit "$failed"
