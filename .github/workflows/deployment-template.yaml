@@ -150,13 +150,15 @@ jobs:
           #    `optional`. A dependency not written as name@namespace cannot be checked.
           helmwave build --skip-unchanged --diff-mode live
           planfile=.helmwave/planfile
-          if ! dangling="$(
-            awk 'NR == FNR { plan[$1] = 1; next } !($1 in plan) || $1 !~ /@/' \
-              <(yq '.releases[] | .name + "@" + .namespace' "${planfile}") \
-              <(yq '.releases[] | .depends_on[]? | .name' "${planfile}")
-          )"; then
+          # Read both lists first: a yq failure inside <(...) would not change any exit status.
+          if ! planned="$(yq '.releases[] | .name + "@" + .namespace' "${planfile}")" \
+            || ! dependencies="$(yq '.releases[] | .depends_on[]? | .name' "${planfile}")"; then
             full_deploy "Could not read the dependencies in the plan"
           fi
+          dangling="$(
+            awk 'NR == FNR { if (NF) plan[$1] = 1; next } NF && (!($1 in plan) || $1 !~ /@/)' \
+              <(printf '%s\n' "${planned}") <(printf '%s\n' "${dependencies}")
+          )"
           if [ -n "${dangling}" ]; then
             full_deploy "Skipped releases that changed releases depend on: $(echo "${dangling}" | paste -sd, -)"
           fi
