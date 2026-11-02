@@ -26,6 +26,15 @@ on:
         type: boolean
         default: true
         description: Enable or disable cache for kaniko
+      cache_repository:
+        required: false
+        type: string
+        default: build-cache
+        description: >-
+          ECR repository for the kaniko layer cache. Kaniko rewrites an expired cache entry under
+          the same tag, so this must be a repository with mutable tags; the image repositories are
+          immutable and refuse the rewrite, which leaves every build after the first expiry cold.
+          Cache keys are content hashes, so every image can share one repository.
       build_args:
         required: false
         type: string
@@ -182,7 +191,7 @@ jobs:
           tags: ${{ secrets.repository_url }}/${{ inputs.image_name }}:${{ inputs.image_tag }}
           file: ${{ inputs.dockerfile }}
           cache: "${{ inputs.cache }}"
-          cache-repository: "${{ secrets.repository_url }}/${{ inputs.image_name }}"
+          cache-repository: "${{ secrets.repository_url }}/${{ inputs.cache_repository }}"
           build-args: |
             PIP_INDEX_URL=${{ env.PIP_INDEX_URL }}
             ${{ inputs.build_args }}
