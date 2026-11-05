@@ -97,9 +97,11 @@ jobs:
 
   # ───────────────────────── rust: release-plz ─────────────────────────
   # Maintains the release PR. Runs on every push; release-plz decides what to update.
+  # Waits for the release job: release-plz finds the last release by its tag, so a checkout
+  # taken before a just-merged release is tagged reopens a PR with the same commits.
   release-plz-pr:
     name: release-plz (PR)
-    needs: detect
+    needs: [detect, release-plz-release]
     if: needs.detect.outputs.engine == 'rust'
     runs-on: ${{ inputs.runs_on }}
     concurrency:
