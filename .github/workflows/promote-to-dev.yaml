@@ -59,9 +59,11 @@ jobs:
         run: sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
 
       - name: Checkout helm-configuration repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0  # v7.0.0
         with:
           fetch-depth: 0
+          # actions-js/push pushes with its own token in the remote URL.
+          persist-credentials: false
           repository: propeller-heads/helm-configuration
           ref: main
           token: ${{ steps.generate-token.outputs.token }}
@@ -71,7 +73,7 @@ jobs:
           yq eval '.${{ inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/${{ inputs.environment }}/versions.yml
 
       - name: Commit & Push changes
-        uses: actions-js/push@master
+        uses: actions-js/push@968f4695ca558093eadb24ad83cc5891f47e0cdc  # v1.6
         with:
           github_token: ${{ steps.generate-token.outputs.token }}
           message: Update version of ${{ inputs.image_name }} with tag ${{ inputs.image_tag }}
