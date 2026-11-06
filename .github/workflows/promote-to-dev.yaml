@@ -36,6 +36,7 @@ on:
 
 jobs:
   promote-to-dev:
+    name: Promote to ${{ inputs.environment }}
     runs-on: "${{ inputs.runs_on }}"
     steps:
       - name: Validate environment
