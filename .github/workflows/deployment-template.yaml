@@ -25,6 +25,13 @@ on:
         required: true
         type: string
         description: Environment name
+      skip_unchanged:
+        required: false
+        type: boolean
+        default: false
+        description: >-
+          Deploy only releases whose manifests changed (helmwave --skip-unchanged). If a release
+          in the plan is not in the `deployed` state, the run deploys everything instead.
     secrets:
       app_id:
         required: true
@@ -87,13 +94,76 @@ jobs:
         env:
           WORKFLOW_STATUS: ":large_blue_square: In Progress"
 
+      # With skip_unchanged, helmwave compares each release with the manifest stored in its latest
+      # Helm revision, whatever the state of that revision. It does not look at the objects in the
+      # cluster. Two cases make the run deploy everything instead, as before this option existed:
+      #
+      # 1. A release of the plan is not `deployed` (failed, pending, uninstalling): helmwave would
+      #    skip it if its manifest did not change, and a full deploy retries it.
+      # 2. A release left in the plan depends on (`depends_on`) a release that was skipped:
+      #    helmwave 0.37.1 then fails with "dependency key ... does not exist" before it deploys.
+      #
+      # It also deploys everything if it cannot check either case.
       - name: Deploy app uses helmwave
-        run: |
-          cd helmwave/${{ inputs.environment }}
-          helmwave yml
-          helmwave up --build
+        shell: bash
         env:
           HELMWAVE_KUBEDOG_ENABLED: true
+          SKIP_UNCHANGED: ${{ inputs.skip_unchanged }}
+        run: |
+          set -euo pipefail
+          cd "helmwave/${ENVIRONMENT}"
+          helmwave yml
+
+          full_deploy() {
+            echo "::warning::$1, deploying everything"
+            helmwave up --build
+            exit 0
+          }
+
+          if [ "${SKIP_UNCHANGED}" != "true" ]; then
+            helmwave up --build
+            exit 0
+          fi
+
+          # 1. Latest Helm revision of every release in the plan; print those not `deployed`.
+          #    A kubectl or jq failure in any namespace fails the check.
+          if ! not_deployed="$(
+            yq '.releases[] | select(.namespace != null) | .namespace' helmwave.yml | sort -u \
+              | while read -r ns; do
+                  kubectl get secrets --namespace "${ns}" --selector owner=helm --output json \
+                    | jq -r --arg ns "${ns}" '[.items[].metadata.labels]
+                        | group_by(.name)[] | max_by(.version | tonumber)
+                        | select(.status != "deployed") | "\(.name)@\($ns) \(.status)"' \
+                    || exit 1
+                done \
+              | awk 'NR == FNR { plan[$1] = 1; next } ($1 in plan)' \
+                  <(yq '.releases[] | .name + "@" + .namespace' helmwave.yml) -
+          )"; then
+            full_deploy "Could not read the Helm release states"
+          fi
+          if [ -n "${not_deployed}" ]; then
+            full_deploy "Releases not in the deployed state: $(echo "${not_deployed}" | paste -sd, -)"
+          fi
+
+          # 2. Build the plan without unchanged releases, then look for a dependency on a release
+          #    that is no longer in it. helmwave 0.37.1 fails on such a dependency even when it is
+          #    `optional`. A dependency not written as name@namespace cannot be checked.
+          helmwave build --skip-unchanged --diff-mode live
+          planfile=.helmwave/planfile
+          # Read both lists first: a yq failure inside <(...) would not change any exit status.
+          if ! planned="$(yq '.releases[] | .name + "@" + .namespace' "${planfile}")" \
+            || ! dependencies="$(yq '.releases[] | .depends_on[]? | .name' "${planfile}")"; then
+            full_deploy "Could not read the dependencies in the plan"
+          fi
+          dangling="$(
+            awk 'NR == FNR { if (NF) plan[$1] = 1; next } NF && (!($1 in plan) || $1 !~ /@/)' \
+              <(printf '%s\n' "${planned}") <(printf '%s\n' "${dependencies}")
+          )"
+          if [ -n "${dangling}" ]; then
+            full_deploy "Skipped releases that changed releases depend on: $(echo "${dangling}" | paste -sd, -)"
+          fi
+
+          helmwave up
 
       - name: Slack Notification
         if: success()
