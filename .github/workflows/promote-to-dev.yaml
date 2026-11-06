@@ -39,10 +39,12 @@ jobs:
     runs-on: "${{ inputs.runs_on }}"
     steps:
       - name: Validate environment
+        env:
+          ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          case "${{ inputs.environment }}" in
+          case "${ENVIRONMENT}" in
             dev|staging) ;;
-            *) echo "::error::environment must be 'dev' or 'staging', got '${{ inputs.environment }}'" && exit 1 ;;
+            *) echo "::error::environment must be 'dev' or 'staging', got '${ENVIRONMENT}'" && exit 1 ;;
           esac
 
       - name: Generate a token
@@ -77,8 +79,12 @@ jobs:
           token: ${{ steps.generate-token.outputs.token }}
 
       - name: Replace release version
+        env:
+          IMAGE_NAME: ${{ inputs.image_name }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          ENVIRONMENT: ${{ inputs.environment }}
         run: |
-          yq eval '.${{ inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/${{ inputs.environment }}/versions.yml
+          yq eval '.[strenv(IMAGE_NAME)].tag = strenv(IMAGE_TAG)' -i "helmwave/${ENVIRONMENT}/versions.yml"
 
       - name: Commit & Push changes
         uses: actions-js/push@968f4695ca558093eadb24ad83cc5891f47e0cdc  # v1.6
