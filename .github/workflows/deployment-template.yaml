@@ -14,9 +14,10 @@ on:
         default: 30
         description: Timeout for workflow
       slack_webhook_url:
-        required: true
+        required: false
         type: string
-        description: Slack webhook url
+        default: ""
+        description: Slack webhook url. Prefer the slack_webhook_url secret, which the logs mask; an input shows in every step's env
       workflow_url:
         required: true
         type: string
@@ -26,6 +27,9 @@ on:
         type: string
         description: Environment name
     secrets:
+      slack_webhook_url:
+        required: false
+        description: Slack webhook url, masked in the logs
       app_id:
         required: true
       app_private_key:
@@ -38,7 +42,7 @@ on:
         required: true
 
 env:
-  SLACK_WEBHOOK_URL: ${{ inputs.slack_webhook_url }}
+  SLACK_WEBHOOK_URL: ${{ secrets.slack_webhook_url || inputs.slack_webhook_url }}
   WORKFLOW_URL: ${{ inputs.workflow_url }}
   ENVIRONMENT: ${{ inputs.environment }}
 
