@@ -25,89 +25,97 @@ on:
         required: false
         type: string
         description: |
-          Application name. This is the release name in versions.yml in helm-configuration repo.
-          If your release is named the same as your docker image, there's no need to set app_name
-          (if you don't set app_name, image_name will be used as release name).
-          But if your release name is different (e.g. you use the same image for multiple releases),
-          then you must set app_name.
-      helm_repo_branch:
-        required: false
-        type: string
-        default: main
-        description: Branch of helm-configuration repo to use
+          Release tag in helm-configuration helmwave/dev. Every dev release with this tag is
+          deployed. Defaults to image_name. image_name is the entry in versions.yml whose tag
+          is replaced.
     secrets:
       app_id:
         required: true
       app_private_key:
         required: true
+      # Not used: helm-configuration deploys with its own role. Declared so that callers that
+      # still pass them do not fail. Remove them from the callers, then from here.
       role_to_assume:
-        required: true
+        required: false
       aws_region:
-        required: true
+        required: false
       eks_cluster_name:
-        required: true
+        required: false
 
 jobs:
   deploy:
     runs-on: "${{ inputs.runs_on }}"
+    timeout-minutes: ${{ inputs.timeout_minutes }}
     steps:
       - name: Generate a token
         id: generate-token
-        uses: getsentry/action-github-app-token@v2
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510  # v3.3.0
         with:
-          app_id: ${{ secrets.app_id }}
-          private_key: ${{ secrets.app_private_key }}
+          app-id: ${{ secrets.app_id }}
+          private-key: ${{ secrets.app_private_key }}
+          owner: propeller-heads
+          repositories: helm-configuration
+          permission-contents: write
+          permission-actions: read
 
-      - name: Checkout helm-configuration repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          repository: propeller-heads/helm-configuration
-          ref: "${{ inputs.helm_repo_branch }}"
-          token: ${{ steps.generate-token.outputs.token }}
-
-      - name: Install yq
-        run: sudo wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/bin/yq && sudo chmod +x /usr/bin/yq
-
-      - name: Install aws-cli
-        uses: unfor19/install-aws-cli-action@v1
-        with:
-          version: 2
-          verbose: false
-          arch: amd64
-          rootdir: ""
-          workdir: ""
-
-      - name: Assume role
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          role-to-assume: "${{ secrets.role_to_assume }}"
-          audience: sts.amazonaws.com
-          aws-region: "${{ secrets.aws_region }}"
-
-      - name: Setup kubeconfig
-        run: aws eks update-kubeconfig --name "${{ secrets.eks_cluster_name }}" --region "${{ secrets.aws_region }}"
-
-      - name: Install helmwave
-        uses: helmwave/setup-action@v0.3.0
-        with:
-          version: 0.37.1
-
-      - name: Replace release version
-        run: |
-          yq eval '.${{ inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/dev/versions.yml
-          cat helmwave/dev/versions.yml
-
-      - name: Deploy app using helmwave
-        run: |
-          cd helmwave/dev
-          helmwave yml
-          helmwave up --build -t ${{ inputs.app_name || inputs.image_name }}
+      # helm-configuration checks the image and runs helmwave. This job has no cluster access.
+      # See helm-configuration .github/workflows/deploy-dev-image.yaml.
+      - name: Ask helm-configuration to deploy the image to dev
+        id: dispatch
         env:
-          HELMWAVE_TAGS: ${{ inputs.app_name }}
-          HELMWAVE_KUBEDOG_ENABLED: true
-
-      - name: Add deployment info to workflow summary
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+          IMAGE_NAME: ${{ inputs.image_name }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          RELEASE_TAG: ${{ inputs.app_name || inputs.image_name }}
+          REQUESTED_BY: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          echo "### Deployed image to dev environment" >> $GITHUB_STEP_SUMMARY
-          echo "\`${{ inputs.app_name || inputs.image_name }}:${{ inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          set -euo pipefail
+          request_id="$(cat /proc/sys/kernel/random/uuid)"
+          jq --null-input \
+            --arg app "${IMAGE_NAME}" \
+            --arg tag "${IMAGE_TAG}" \
+            --arg release_tag "${RELEASE_TAG}" \
+            --arg request_id "${request_id}" \
+            --arg requested_by "${REQUESTED_BY}" \
+            '{event_type: "deploy-dev-image", client_payload: {app: $app, tag: $tag, release_tag: $release_tag, request_id: $request_id, requested_by: $requested_by}}' |
+            gh api --method POST repos/propeller-heads/helm-configuration/dispatches --input -
+          echo "request_id=${request_id}" >> "${GITHUB_OUTPUT}"
+
+      - name: Wait for the deployment
+        env:
+          GH_TOKEN: ${{ steps.generate-token.outputs.token }}
+          REQUEST_ID: ${{ steps.dispatch.outputs.request_id }}
+          IMAGE_NAME: ${{ inputs.image_name }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+        run: |
+          set -euo pipefail
+          runs_path="repos/propeller-heads/helm-configuration/actions/workflows/deploy-dev-image.yaml/runs"
+          run_id=""
+          for _ in $(seq 1 30); do
+            run_id=$(gh api "${runs_path}?event=repository_dispatch&per_page=50" \
+              --jq "[.workflow_runs[] | select(.display_title | endswith(\"[${REQUEST_ID}]\"))][0].id // empty")
+            [[ -n "${run_id}" ]] && break
+            sleep 5
+          done
+          if [[ -z "${run_id}" ]]; then
+            echo "::error::helm-configuration did not start a Deploy image to dev run for request ${REQUEST_ID}."
+            exit 1
+          fi
+
+          run_url="https://github.com/propeller-heads/helm-configuration/actions/runs/${run_id}"
+          echo "Deploy image to dev run: ${run_url}"
+          while true; do
+            read -r status conclusion < <(gh api "repos/propeller-heads/helm-configuration/actions/runs/${run_id}" \
+              --jq '"\(.status) \(.conclusion // "none")"')
+            [[ "${status}" == "completed" ]] && break
+            sleep 15
+          done
+
+          {
+            echo "### Deployed image to dev environment"
+            echo "\`${IMAGE_NAME}:${IMAGE_TAG}\`: [${conclusion}](${run_url})"
+          } >> "${GITHUB_STEP_SUMMARY}"
+          if [[ "${conclusion}" != "success" ]]; then
+            echo "::error::The dev deployment finished with '${conclusion}'. See ${run_url}"
+            exit 1
+          fi
