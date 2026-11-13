@@ -33,14 +33,6 @@ on:
         required: true
       app_private_key:
         required: true
-      # Not used: helm-configuration deploys with its own role. Declared so that callers that
-      # still pass them do not fail. Remove them from the callers, then from here.
-      role_to_assume:
-        required: false
-      aws_region:
-        required: false
-      eks_cluster_name:
-        required: false
 
 jobs:
   deploy:
