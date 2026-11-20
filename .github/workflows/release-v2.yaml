@@ -54,10 +54,12 @@ jobs:
           token: ${{ steps.generate-token.outputs.token }}
 
       - name: Setup git to use https
+        env:
+          APP_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
             git config --global credential.helper store
-            echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
-            git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
+            echo "https://${APP_TOKEN}@github.com" > ~/.git-credentials
+            git config --global url."https://x-access-token:${APP_TOKEN}@github.com".insteadOf ssh://github.com
 
       - name: Set up Python environment
         uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065  # v5.6.0
@@ -87,4 +89,9 @@ jobs:
         id: semantic
         env:
           GITHUB_TOKEN: ${{ steps.generate-token.outputs.token }}
-        run: npx semantic-release ${{ inputs.args }}
+          SEMANTIC_RELEASE_ARGS: ${{ inputs.args }}
+        run: |
+          # SEMANTIC_RELEASE_ARGS holds several CLI flags, and callers quote some of them
+          # (for example --tag-format 'v${version}'). xargs splits the words and removes the
+          # quotes like the shell did, but it does not expand variables or run commands.
+          printf '%s' "$SEMANTIC_RELEASE_ARGS" | xargs npx semantic-release

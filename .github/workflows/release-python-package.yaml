@@ -87,6 +87,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a  # v4.3.1
@@ -111,25 +112,30 @@ jobs:
           python-version: ${{ inputs.py_version }}
 
       - name: Install python package utils
+        env:
+          PY_VERSION: ${{ inputs.py_version }}
         run: |
-          python${{ inputs.py_version }} -m pip install --upgrade pip build twine
+          "python${PY_VERSION}" -m pip install --upgrade pip build twine
 
       - name: Write Dockerfile | Build wheel for Linux (with maturin)
         if: ${{ runner.os == 'Linux' && inputs.use_maturin }}
+        env:
+          PY_VERSION: ${{ inputs.py_version }}
+          YUM_PACKAGES: ${{ inputs.yum_packages }}
         run: |
           cat <<EOF > Dockerfile.wheel
           FROM quay.io/pypa/manylinux2014_x86_64
           
-          RUN yum install -y ${{ inputs.yum_packages }} && yum clean all
+          RUN yum install -y ${YUM_PACKAGES} && yum clean all
           
           RUN curl --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- --default-toolchain=stable -y
           
           ENV PATH="/root/.cargo/bin:/opt/rh/devtoolset-10/root/usr/bin:$PATH"
           
-          RUN python${{ inputs.py_version }} -m pip install maturin
+          RUN python${PY_VERSION} -m pip install maturin
           
           WORKDIR /build
-          CMD python${{ inputs.py_version }} -m maturin build --release --compatibility manylinux2014 -i $(realpath /usr/local/bin/python${{ inputs.py_version }})
+          CMD python${PY_VERSION} -m maturin build --release --compatibility manylinux2014 -i $(realpath "/usr/local/bin/python${PY_VERSION}")
           EOF
           
           cat Dockerfile.wheel
@@ -146,17 +152,22 @@ jobs:
       - name: Build | Build wheel for Linux (with maturin)
         uses: addnab/docker-run-action@4f65fabd2431ebc8d299f8e5a018d79a769ae185  # v3
         if: ${{ runner.os == 'Linux' && inputs.use_maturin }}
+        env:
+          APP_TOKEN: ${{ steps.generate-token.outputs.token }}
+          PACKAGE_ROOT: ${{ inputs.package_root }}
+          PY_VERSION: ${{ inputs.py_version }}
         with:
           image: linux-wheel-builder
-          options: -v ${{ github.workspace }}:/build
+          # -e NAME passes the step env value into the build container.
+          options: -v ${{ github.workspace }}:/build -e APP_TOKEN -e PACKAGE_ROOT -e PY_VERSION
           run: |
             # allows resolving private git packages
             git config --global credential.helper store
-            echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
-            git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
+            echo "https://${APP_TOKEN}@github.com" > ~/.git-credentials
+            git config --global url."https://x-access-token:${APP_TOKEN}@github.com".insteadOf ssh://github.com
             
-            cd ${{ inputs.package_root }}
-            python${{ inputs.py_version }} -m maturin build --release --compatibility manylinux2014 -i $(realpath /usr/local/bin/python${{ inputs.py_version }})
+            cd "$PACKAGE_ROOT"
+            "python${PY_VERSION}" -m maturin build --release --compatibility manylinux2014 -i $(realpath "/usr/local/bin/python${PY_VERSION}")
       
 
       - name: Set up Homebrew | Build wheel for macOS (with maturin)
@@ -178,36 +189,52 @@ jobs:
 
       - name: Build | Build wheel for macOS (with maturin)
         if: ${{ runner.os == 'macOS' && inputs.use_maturin }}
+        env:
+          APP_TOKEN: ${{ steps.generate-token.outputs.token }}
+          BREW_PACKAGES: ${{ inputs.brew_packages }}
+          PACKAGE_ROOT: ${{ inputs.package_root }}
+          PY_VERSION: ${{ inputs.py_version }}
         run: |
-          if [ -n "${{ inputs.brew_packages }}" ]; then
-            brew install ${{ inputs.brew_packages }}
+          if [ -n "$BREW_PACKAGES" ]; then
+            # BREW_PACKAGES is a space-separated list. Keep it unquoted so each package is one word.
+            # shellcheck disable=SC2086
+            brew install $BREW_PACKAGES
           else
             echo "No packages to install."
           fi
-          python${{ inputs.py_version }} -m pip install maturin
+          "python${PY_VERSION}" -m pip install maturin
           
           git config --global credential.helper store
-          echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
-          git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
+          echo "https://${APP_TOKEN}@github.com" > ~/.git-credentials
+          git config --global url."https://x-access-token:${APP_TOKEN}@github.com".insteadOf ssh://github.com
           
-          cd ${{ inputs.package_root }}
-          python${{ inputs.py_version }} -m maturin build --release --interpreter $(which python${{ inputs.py_version }})
+          cd "$PACKAGE_ROOT"
+          "python${PY_VERSION}" -m maturin build --release --interpreter $(which "python${PY_VERSION}")
 
       - name: Build wheel without maturin
         if: ${{ !inputs.use_maturin }}
+        env:
+          PACKAGE_ROOT: ${{ inputs.package_root }}
+          PY_VERSION: ${{ inputs.py_version }}
         run: |
-          cd ${{ inputs.package_root }}
-          python${{ inputs.py_version }} -m build
+          cd "$PACKAGE_ROOT"
+          "python${PY_VERSION}" -m build
 
       - name: Publish Python distribution to AWS CodeArtifact
         if: ${{ inputs.push }}
         shell: bash
+        env:
+          CODEARTIFACT_DOMAIN: ${{ inputs.domain }}
+          CODEARTIFACT_DOMAIN_OWNER: ${{ secrets.domain_owner }}
+          CODEARTIFACT_REPOSITORY: ${{ inputs.repository }}
+          USE_MATURIN: ${{ inputs.use_maturin }}
+          PACKAGE_ROOT: ${{ inputs.package_root }}
         run: |
-          aws codeartifact login --tool twine --domain ${{ inputs.domain }} --domain-owner ${{ secrets.domain_owner }} --repository ${{ inputs.repository }}
+          aws codeartifact login --tool twine --domain "$CODEARTIFACT_DOMAIN" --domain-owner "$CODEARTIFACT_DOMAIN_OWNER" --repository "$CODEARTIFACT_REPOSITORY"
 
-          if [ "${{ inputs.use_maturin }}" = "true" ]; then
+          if [ "$USE_MATURIN" = "true" ]; then
             twine upload --repository codeartifact ./target/wheels/*.whl
           else
-            cd ${{ inputs.package_root }}
+            cd "$PACKAGE_ROOT"
             twine upload --repository codeartifact ./dist/*.whl ./dist/*.tar.gz
           fi

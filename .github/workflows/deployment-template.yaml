@@ -57,6 +57,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262  # v4.4.0
         with:
           fetch-depth: 0
+          persist-credentials: false
 
       - name: Install-aws-cli
         uses: unfor19/install-aws-cli-action@f5b46b7f32cf5e7ebd652656c5036bf83dd1e60c  # 1.0.8
@@ -75,7 +76,10 @@ jobs:
           aws-region: "${{ secrets.aws_region }}"
 
       - name: Setup kubeconfig
-        run: aws eks update-kubeconfig --name "${{ secrets.eks_cluster_name }}" --region "${{ secrets.aws_region }}"
+        env:
+          EKS_CLUSTER_NAME: ${{ secrets.eks_cluster_name }}
+          EKS_CLUSTER_REGION: ${{ secrets.aws_region }}
+        run: aws eks update-kubeconfig --name "$EKS_CLUSTER_NAME" --region "$EKS_CLUSTER_REGION"
 
       - name: Install helmwave
         uses: helmwave/setup-action@a2b84aea3434be147501a53655b9fec902532533  # v0.3.0
@@ -89,7 +93,7 @@ jobs:
 
       - name: Deploy app uses helmwave
         run: |
-          cd helmwave/${{ inputs.environment }}
+          cd "helmwave/$ENVIRONMENT"
           helmwave yml
           helmwave up --build
         env:

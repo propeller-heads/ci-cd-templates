@@ -65,8 +65,11 @@ jobs:
           token: ${{ steps.generate-token.outputs.token }}
 
       - name: Replace release version
+        env:
+          RELEASE_NAME: ${{ inputs.app_name || inputs.image_name }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
-          yq eval '.${{ inputs.app_name || inputs.image_name }}.tag="${{ inputs.image_tag }}"' -i helmwave/prod/versions.yml
+          yq eval ".${RELEASE_NAME}.tag=\"${IMAGE_TAG}\"" -i helmwave/prod/versions.yml
 
       - name: Create pull request
         id: create-pr
@@ -86,8 +89,13 @@ jobs:
           reviewers: "${{ inputs.reviewers }}"
 
       - name: Set workflow summary
+        env:
+          PULL_REQUEST_URL: ${{ steps.create-pr.outputs.pull-request-url }}
+          RELEASE_NAME: ${{ inputs.app_name || inputs.image_name }}
+          IMAGE_NAME: ${{ inputs.image_name }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
           echo "### Approve this Pull Request:" >> $GITHUB_STEP_SUMMARY
-          echo "${{ steps.create-pr.outputs.pull-request-url }}" >> $GITHUB_STEP_SUMMARY
-          echo "#### Set new production image for ${{ inputs.app_name || inputs.image_name }}" >> $GITHUB_STEP_SUMMARY
-          echo "\`${{ inputs.image_name }}:${{ inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "$PULL_REQUEST_URL" >> $GITHUB_STEP_SUMMARY
+          echo "#### Set new production image for $RELEASE_NAME" >> $GITHUB_STEP_SUMMARY
+          echo "\`$IMAGE_NAME:$IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY
