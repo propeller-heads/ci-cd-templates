@@ -99,6 +99,7 @@ jobs:
         with:
           submodules: recursive
           token: ${{ steps.generate-token.outputs.token }}
+          persist-credentials: false
 
       - name: Assume role
         uses: aws-actions/configure-aws-credentials@7474bc4690e29a8392af63c5b98e7449536d5c3a  # v4.3.1
@@ -114,11 +115,15 @@ jobs:
       - name: Check if image already exists
         id: check-image
         shell: bash
+        env:
+          IMAGE_NAME: ${{ inputs.image_name }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          DOMAIN_OWNER: ${{ secrets.domain_owner }}
         run: |
-          IMAGE="${{ inputs.image_name }}:${{ inputs.image_tag }}"
+          IMAGE="$IMAGE_NAME:$IMAGE_TAG"
 
           # Try to fetch the image from the registry and capture its digest
-          if DIGEST=$(aws ecr describe-images --registry-id ${{ secrets.domain_owner }} --repository-name ${{ inputs.image_name }} --image-ids imageTag=${{ inputs.image_tag }} --query 'imageDetails[0].imageDigest' --output text 2>/dev/null) && [ -n "$DIGEST" ] && [ "$DIGEST" != "None" ]; then
+          if DIGEST=$(aws ecr describe-images --registry-id "$DOMAIN_OWNER" --repository-name "$IMAGE_NAME" --image-ids imageTag="$IMAGE_TAG" --query 'imageDetails[0].imageDigest' --output text 2>/dev/null) && [ -n "$DIGEST" ] && [ "$DIGEST" != "None" ]; then
             echo "Image $IMAGE already exists in the repository with digest $DIGEST"
             echo "skip_remaining_steps=true" >> $GITHUB_OUTPUT
             echo "existing_digest=$DIGEST" >> $GITHUB_OUTPUT
@@ -130,38 +135,45 @@ jobs:
 
       - name: Download Tycho-client from S3
         if: "${{ inputs.image_name == 'defibot' && steps.check-image.outputs.skip_remaining_steps != 'true' }}"
+        env:
+          TYCHO_CLIENT_VERSION: ${{ inputs.tycho_client_version }}
+          TYCHO_CLIENT_VERSION_DEFAULT: ${{ inputs.tycho_client_version_default }}
         run: |
           # Ensure the manifest file is empty or create it if it doesn't exist
           MANIFEST_FILE="manifest.txt"
           echo -n "" > "$MANIFEST_FILE"
           # Determine the tycho_client_version to use
-          if [ -z "${{ inputs.tycho_client_version }}" ]; then
-            echo "Using default tycho_client_version: ${{ inputs.tycho_client_version_default }}"
-            FILE=${{ inputs.tycho_client_version_default }}
+          if [ -z "$TYCHO_CLIENT_VERSION" ]; then
+            echo "Using default tycho_client_version: $TYCHO_CLIENT_VERSION_DEFAULT"
+            FILE="$TYCHO_CLIENT_VERSION_DEFAULT"
           else
-            echo "Using provided tycho_client_version: ${{ inputs.tycho_client_version }}"
-            FILE=${{ inputs.tycho_client_version }}
+            echo "Using provided tycho_client_version: $TYCHO_CLIENT_VERSION"
+            FILE="$TYCHO_CLIENT_VERSION"
           fi
           echo "Tycho-client binary: $FILE"
-          aws s3 cp s3://repo.propellerheads-propellerheads/tycho-client/$FILE ./
-          tar -xzf $FILE
-          EXTRACTED_NAME=$(tar -tzf $FILE | grep tycho-client | head -n 1)
+          aws s3 cp "s3://repo.propellerheads-propellerheads/tycho-client/$FILE" ./
+          tar -xzf "$FILE"
+          EXTRACTED_NAME=$(tar -tzf "$FILE" | grep tycho-client | head -n 1)
           mv $EXTRACTED_NAME ./defibot/tycho/bins/tycho-client
           echo "$FILE" > "$MANIFEST_FILE"
-          rm $FILE
+          rm "$FILE"
 
       - name: Login in pip codeartifact
         if: "${{ (inputs.image_name == 'defibot' || inputs.image_name == 'pyth') && steps.check-image.outputs.skip_remaining_steps != 'true' }}"
+        env:
+          DOMAIN_OWNER: ${{ secrets.domain_owner }}
         run: |
-          CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain propeller --domain-owner ${{ secrets.domain_owner }} --query authorizationToken --output text --duration 1800)
-          echo PIP_INDEX_URL="https://aws:${CODEARTIFACT_AUTH_TOKEN}@propeller-${{ secrets.domain_owner }}.d.codeartifact.eu-central-1.amazonaws.com/pypi/protosim/simple/" >> $GITHUB_ENV
+          CODEARTIFACT_AUTH_TOKEN=$(aws codeartifact get-authorization-token --domain propeller --domain-owner "$DOMAIN_OWNER" --query authorizationToken --output text --duration 1800)
+          echo PIP_INDEX_URL="https://aws:${CODEARTIFACT_AUTH_TOKEN}@propeller-${DOMAIN_OWNER}.d.codeartifact.eu-central-1.amazonaws.com/pypi/protosim/simple/" >> $GITHUB_ENV
 
       - name: Setup git to use https
         if: "${{ inputs.image_name == 'propeller-searcher' && steps.check-image.outputs.skip_remaining_steps != 'true' }}"
+        env:
+          APP_TOKEN: ${{ steps.generate-token.outputs.token }}
         run: |
           git config --global credential.helper store
-          echo "https://${{ steps.generate-token.outputs.token }}@github.com" > ~/.git-credentials
-          git config --global url."https://x-access-token:${{ steps.generate-token.outputs.token }}@github.com".insteadOf ssh://github.com
+          echo "https://${APP_TOKEN}@github.com" > ~/.git-credentials
+          git config --global url."https://x-access-token:${APP_TOKEN}@github.com".insteadOf ssh://github.com
 
       - name: Setup toolchain
         if: "${{ inputs.image_name == 'propeller-searcher' && steps.check-image.outputs.skip_remaining_steps != 'true' }}"
@@ -221,11 +233,16 @@ jobs:
           SOURCE_DATE_EPOCH: 0
 
       - name: Add image info to workflow summary
+        env:
+          SKIP_REMAINING_STEPS: ${{ steps.check-image.outputs.skip_remaining_steps }}
+          IMAGE_NAME: ${{ inputs.image_name }}
+          IMAGE_TAG: ${{ inputs.image_tag }}
+          IMAGE_DIGEST: ${{ steps.check-image.outputs.skip_remaining_steps == 'true' && steps.check-image.outputs.existing_digest || (inputs.build_tool == 'kaniko' && steps.build-kaniko.outputs.digest || steps.build-docker.outputs.digest) }}
         run: |
-          if [[ "${{ steps.check-image.outputs.skip_remaining_steps }}" == "true" ]]; then
+          if [[ "$SKIP_REMAINING_STEPS" == "true" ]]; then
             echo "## Didn't push Docker image because it is already present in the repo" >> $GITHUB_STEP_SUMMARY
           else
             echo "## Built and pushed Docker image" >> $GITHUB_STEP_SUMMARY
           fi
-          echo "\`${{ inputs.image_name }}:${{ inputs.image_tag }}\`" >> $GITHUB_STEP_SUMMARY
-          echo "\`${{ steps.check-image.outputs.skip_remaining_steps == 'true' && steps.check-image.outputs.existing_digest || (inputs.build_tool == 'kaniko' && steps.build-kaniko.outputs.digest || steps.build-docker.outputs.digest) }}\`" >> $GITHUB_STEP_SUMMARY
+          echo "\`$IMAGE_NAME:$IMAGE_TAG\`" >> $GITHUB_STEP_SUMMARY
+          echo "\`$IMAGE_DIGEST\`" >> $GITHUB_STEP_SUMMARY
